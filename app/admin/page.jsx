@@ -52,13 +52,26 @@ export default function AdminUsersPage() {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
         try {
-          const userDoc = await getDoc(doc(db, "users", user.uid));
-          const userData = userDoc.data();
+          // Force a fresh fetch from Firestore (bypassing local cache)
+          const userRef = doc(db, "users", user.uid);
+          const userDoc = await getDoc(userRef);
+          
+          if (!userDoc.exists()) {
+            console.error("User document does not exist for UID:", user.uid);
+            toast.error("Security Error: User profile not found");
+            router.push("/");
+            return;
+          }
 
-          if (userData?.role === "admin") {
+          const userData = userDoc.data();
+          console.log("Current User Role:", userData?.role); // CHECK THIS IN CONSOLE
+
+          // Checking for both 'role' string and 'isAdmin' boolean to be safe
+          if (userData?.role === "admin" || userData?.isAdmin === true) {
             setIsAdmin(true);
             fetchUsers();
           } else {
+            console.warn("Access Denied: User is not an admin");
             toast.error("Unauthorized: Admin access required");
             router.push("/"); 
           }
@@ -127,7 +140,7 @@ export default function AdminUsersPage() {
     );
   };
 
-  if (loading && !isAdmin) {
+  if (loading) {
     return (
       <div className="flex flex-col items-center justify-center h-screen gap-4">
         <IconLoader className="animate-spin h-10 w-10 text-primary" />
@@ -136,8 +149,9 @@ export default function AdminUsersPage() {
     );
   }
 
-  if (!isAdmin) return null;
-
+  if (!isAdmin) {
+    return null; // Or a "Access Denied" message
+  }
   return (
     <div className="p-8 max-w-7xl mx-auto space-y-8">
       <div className="flex flex-col gap-1">

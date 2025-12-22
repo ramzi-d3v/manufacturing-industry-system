@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { auth, getFirestoreDB } from "@/lib/firebase"; 
-import { onAuthStateChanged } from "firebase/auth";
+import { onAuthStateChanged, reload } from "firebase/auth"; // Added reload
 import { doc, onSnapshot } from "firebase/firestore"; 
 
 import { EmailVerificationAlert } from "@/components/VerificationEmailPending";
@@ -18,9 +18,9 @@ export default function CompliteProfilePage() {
   const [loading, setLoading] = useState(true);
   const [isSubmitted, setIsSubmitted] = useState(false);
 
-  // 1. Auth State Listener
+  // 1. Auth State & Verification Polling
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       if (!currentUser) {
         router.replace("/signin");
       } else {
@@ -29,7 +29,22 @@ export default function CompliteProfilePage() {
       }
       setLoading(false);
     });
-    return () => unsubscribe();
+
+    // POLLING LOGIC: Check every 3 seconds if the email is verified
+    const interval = setInterval(async () => {
+      if (auth.currentUser && !auth.currentUser.emailVerified) {
+        await reload(auth.currentUser); // Force-refresh the user data from Firebase
+        if (auth.currentUser.emailVerified) {
+          setEmailVerified(true);
+          toast.success("Email verified successfully!");
+        }
+      }
+    }, 3000);
+
+    return () => {
+      unsubscribe();
+      clearInterval(interval);
+    };
   }, [router]);
 
   // 2. Approval Listener (Real-time)
@@ -37,11 +52,9 @@ export default function CompliteProfilePage() {
     if (!user || !isSubmitted) return;
 
     const db = getFirestoreDB();
-    // Listen to the specific user document for changes
     const unsubApproval = onSnapshot(doc(db, "users", user.uid), (docSnap) => {
       if (docSnap.exists()) {
         const data = docSnap.data();
-        // If an admin manually changes "isApproved" to true in Firebase
         if (data.isApproved === true) {
           toast.success("Account Approved! Redirecting...");
           router.push("/"); 
@@ -54,11 +67,11 @@ export default function CompliteProfilePage() {
 
   if (loading) return null;
 
+  // This will now switch to the form automatically when emailVerified becomes true
   if (!emailVerified) {
     return <EmailVerificationAlert />;
   }
 
-  // If they finished the form but aren't approved yet, show this
   if (isSubmitted) {
     return <ApprovalGuard />; 
   }
