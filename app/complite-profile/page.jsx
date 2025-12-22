@@ -1,19 +1,24 @@
 "use client";
-
+import { toast } from "sonner";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { auth } from "@/lib/firebase";
+
+import { auth, getFirestoreDB } from "@/lib/firebase"; 
 import { onAuthStateChanged } from "firebase/auth";
+import { doc, onSnapshot } from "firebase/firestore"; 
+
 import { EmailVerificationAlert } from "@/components/VerificationEmailPending";
 import { StepperFormDemo } from "@/container/stapper";
+import { ApprovalGuard } from "@/components/post-complete";
 
 export default function CompliteProfilePage() {
   const router = useRouter();
   const [user, setUser] = useState(null);
   const [emailVerified, setEmailVerified] = useState(false);
-  const [loading, setLoading] = useState(true); // <-- new loading state
+  const [loading, setLoading] = useState(true);
+  const [isSubmitted, setIsSubmitted] = useState(false);
 
-  // Listen to auth state
+  // 1. Auth State Listener
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       if (!currentUser) {
@@ -22,42 +27,49 @@ export default function CompliteProfilePage() {
         setUser(currentUser);
         setEmailVerified(currentUser.emailVerified);
       }
-      setLoading(false); // <-- finished loading
+      setLoading(false);
     });
-
     return () => unsubscribe();
   }, [router]);
 
-  // Poll email verification
+  // 2. Approval Listener (Real-time)
   useEffect(() => {
-    if (!user || emailVerified) return;
+    if (!user || !isSubmitted) return;
 
-    const interval = setInterval(async () => {
-      await user.reload();
-      if (user.emailVerified) {
-        setEmailVerified(true);
+    const db = getFirestoreDB();
+    // Listen to the specific user document for changes
+    const unsubApproval = onSnapshot(doc(db, "users", user.uid), (docSnap) => {
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        // If an admin manually changes "isApproved" to true in Firebase
+        if (data.isApproved === true) {
+          toast.success("Account Approved! Redirecting...");
+          router.push("/"); 
+        }
       }
-    }, 3000);
+    });
 
-    return () => clearInterval(interval);
-  }, [user, emailVerified]);
+    return () => unsubApproval();
+  }, [user, isSubmitted, router]);
 
-  if (loading) {
-    return null; // <-- don’t render anything until Firebase is ready
-  }
+  if (loading) return null;
 
-  // Show pending component if not verified
   if (!emailVerified) {
     return <EmailVerificationAlert />;
   }
 
-  // Email verified → show main content
+  // If they finished the form but aren't approved yet, show this
+  if (isSubmitted) {
+    return <ApprovalGuard />; 
+  }
+
   return (
-    <div className="p-6 ">
-      <h1 className="text-lg  mb-4 font-mono border-b-2 border-dotted pb-2">Complete Profile Page</h1>
-      
+    <div className="p-6">
+      <h1 className="text-lg mb-4 font-mono border-b-2 border-dotted pb-2">
+        Complete Profile Page
+      </h1>
       <div className="mt-24">
-        <StepperFormDemo/>
+        <StepperFormDemo onComplete={() => setIsSubmitted(true)} />
       </div>
     </div>
   );

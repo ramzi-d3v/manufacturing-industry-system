@@ -142,3 +142,18 @@ select:-webkit-autofill {
 
   transition: background-color 9999s ease-in-out 0s;
 }
+
+@keyframes fadeSlide {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.animate-fade-slide {
+  animation: fadeSlide 0.3s ease-in-out;
+}

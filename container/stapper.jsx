@@ -4,6 +4,7 @@ import * as React from "react";
 import { useEffect, useState } from "react";
 import { onAuthStateChanged } from "firebase/auth";
 import { doc, setDoc, serverTimestamp } from "firebase/firestore";
+import { useRouter } from "next/navigation"; // ✅ FIX
 
 import { getFirebaseAuth, getFirestoreDB } from "@/lib/firebase";
 import { toast } from "sonner";
@@ -19,7 +20,6 @@ import {
 } from "@/components/ui/select";
 import { FileUpload } from "@/components/file-upload";
 
-
 /* --------------------------
    STEPS
 -------------------------- */
@@ -30,16 +30,16 @@ const steps = [
   { value: "documents", title: "Documents", description: "Upload documents" },
 ];
 
-/* --------------------------
-   YEARS
--------------------------- */
-const years = Array.from({ length: 30 }, (_, i) => `${new Date().getFullYear() - i}`);
+const years = Array.from({ length: 30 }, (_, i) =>
+  `${new Date().getFullYear() - i}`
+);
 
 export function StepperFormDemo({ onComplete }) {
-  const [step, setStep] = useState(0);
-  
-  const [user, setUser] = useState(null);
+  const router = useRouter(); // ✅ FIX
   const db = getFirestoreDB();
+
+  const [step, setStep] = useState(0);
+  const [user, setUser] = useState(null);
 
   const [form, setForm] = useState({
     companyName: "",
@@ -59,6 +59,8 @@ export function StepperFormDemo({ onComplete }) {
     cardNumber: "",
     expiry: "",
     cvv: "",
+    bankName: "",
+    accountNumber: "",
   });
 
   const update = (k, v) => setForm((p) => ({ ...p, [k]: v }));
@@ -74,14 +76,13 @@ export function StepperFormDemo({ onComplete }) {
     });
   }, []);
 
-  function nextStep() {
+  const nextStep = () =>
     setStep((s) => Math.min(s + 1, steps.length - 1));
-  }
+  const prevStep = () => setStep((s) => Math.max(s - 1, 0));
 
-  function prevStep() {
-    setStep((s) => Math.max(s - 1, 0));
-  }
-
+  /* --------------------------
+     SUBMIT (FIXED)
+  -------------------------- */
   async function onSubmit(e) {
   e.preventDefault();
   if (!user) return toast.error("Not authenticated");
@@ -89,57 +90,118 @@ export function StepperFormDemo({ onComplete }) {
   try {
     const uid = user.uid;
 
-    await setDoc(doc(db, "users", uid), { ...form, createdAt: serverTimestamp() });
-    await setDoc(doc(db, "companies", uid), { ...form, createdAt: serverTimestamp() });
-    await setDoc(doc(db, "payments", uid), {
-      uid,
-      paymentMethod: form.paymentMethod,
-      cardLast4: form.cardNumber?.slice(-4) || "",
-      createdAt: serverTimestamp(),
-    });
-    await setDoc(doc(db, "documents", uid), {
-      uid,
-      uploaded: false,
-      createdAt: serverTimestamp(),
-    });
+    // 1️⃣ Company
+    await setDoc(
+      doc(db, "companies", uid),
+      {
+        companyName: form.companyName,
+        tin: form.tin,
+        description: form.description,
+        brelaName: form.brelaName,
+        businessLicenceYear: form.businessLicenceYear,
+        location: form.location,
+        contact: form.contact,
+        companyEmail: form.companyEmail,
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true }
+    );
 
-    toast.success("Registration completed! Check your email to verify.");
+    // 2️⃣ User
+    await setDoc(
+      doc(db, "users", uid),
+      {
+        firstName: form.firstName,
+        phone: form.phone,
+        email: form.email,
+        role: form.role,
+        birthday: form.birthday,
+        isDecline: false, // default
+        isAdmin: false,   // default
+        isApproved: false, // needs admin approval
+        profileCompleted: true, // unlock guard
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true }
+    );
 
-    onComplete?.();
-      router.replace("/");
+    // 3️⃣ Payment
+    await setDoc(
+      doc(db, "payments", uid),
+      {
+        uid,
+        paymentMethod: form.paymentMethod,
+        cardLast4: form.cardNumber?.slice(-4) || "",
+        bankName: form.bankName || "",
+        accountNumber: form.accountNumber || "",
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true }
+    );
+
+    // 4️⃣ Documents
+    await setDoc(
+      doc(db, "documents", uid),
+      {
+        uid,
+        uploaded: true,
+        files: form.uploadedFiles || [], // optional, depends on FileUpload
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true }
+    );
+
+    toast.success("Registration completed!");
+    if (onComplete) {
+      onComplete();
+    }
+   // redirect to home
   } catch (err) {
     console.error(err);
     toast.error("Submission failed");
   }
 }
 
+
   return (
-    <>
-      <form onSubmit={onSubmit} className="w-full">
-        <div className="flex items-center justify-center gap-6 mb-6">
-          {steps.map((s, i) => (
-            <div key={s.value} className="flex items-center gap-2">
-              <div
-                className={`size-8 rounded-full flex items-center justify-center border
-                ${
-                  i === step
-                    ? "bg-white text-black"
-                    : i < step
-                    ? "bg-green-500 text-white"
-                    : "text-muted-foreground"
-                }`}
-              >
-                {i + 1}
-              </div>
-              <div>
-                <div className="font-semibold">{s.title}</div>
-                <div className="text-xs text-muted-foreground">{s.description}</div>
+    <form onSubmit={onSubmit} className="w-[80%] mx-auto">
+      {/* --------------------------
+          STEPPER HEADER
+      -------------------------- */}
+      <div className="flex items-center justify-center gap-6 mb-6">
+        {steps.map((s, i) => (
+          <div key={s.value} className="flex items-center gap-2">
+            <div
+              className={`size-8 rounded-full flex items-center justify-center border
+              ${
+                i === step
+                  ? "bg-white text-black"
+                  : i < step
+                  ? "bg-green-500 text-white"
+                  : "text-muted-foreground"
+              }`}
+            >
+              {i + 1}
+            </div>
+            <div>
+              <div className="font-semibold">{s.title}</div>
+              <div className="text-xs text-muted-foreground">
+                {s.description}
               </div>
             </div>
-          ))}
-        </div>
+          </div>
+        ))}
+      </div>
 
-        {step === 0 && (
+      {/* --------------------------
+          STEP CONTENT (SMOOTH)
+      -------------------------- */}
+      <div className="relative overflow-hidden">
+        <div
+          key={step}
+          className="animate-fade-slide" // ✅ smooth transition
+        >
+         {step === 0 && (
           <div className="flex flex-col gap-4">
             <div className="grid grid-cols-2 gap-4">
               <Input placeholder="Company Name" value={form.companyName} onChange={(e) => update("companyName", e.target.value)} />
@@ -196,7 +258,7 @@ export function StepperFormDemo({ onComplete }) {
           </div>
         )}
 
-       {step === 2 && (
+  {step === 2 && (
   <div className="flex flex-col gap-4">
     <Select
       value={form.paymentMethod}
@@ -261,19 +323,30 @@ export function StepperFormDemo({ onComplete }) {
 
         {step === 3 && <FileUpload />}
 
-        <div className="mt-6 flex justify-between">
-          <Button type="button" variant="outline" disabled={step === 0} onClick={prevStep}>
-            Previous
-          </Button>
-          {step === steps.length - 1 ? (
-            <Button type="submit">Complete</Button>
-          ) : (
-            <Button type="button" onClick={nextStep}>Next</Button>
-          )}
         </div>
-      </form>
+      </div>
 
-      
-    </>
+      {/* --------------------------
+          ACTIONS
+      -------------------------- */}
+      <div className="mt-6 flex justify-between">
+        <Button
+          type="button"
+          variant="outline"
+          disabled={step === 0}
+          onClick={prevStep}
+        >
+          Previous
+        </Button>
+
+        {step === steps.length - 1 ? (
+          <Button type="submit">Complete</Button>
+        ) : (
+          <Button type="button" onClick={nextStep}>
+            Next
+          </Button>
+        )}
+      </div>
+    </form>
   );
 }
