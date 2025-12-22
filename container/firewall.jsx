@@ -12,7 +12,7 @@ export default function ProtectedPage({ children }) {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       if (!currentUser) {
-        router.replace("/signin"); // Redirect if not logged in
+        router.replace("/signup"); 
       } else {
         setUser(currentUser);
       }
