@@ -5,8 +5,23 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { getFirestoreDB, getFirebaseAuth } from "@/lib/firebase";
 import { onAuthStateChanged } from "firebase/auth";
-import { collection, getDocs, doc, updateDoc, getDoc, setDoc } from "firebase/firestore";
-import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
+import { 
+  collection, 
+  getDocs, 
+  doc, 
+  updateDoc, 
+  getDoc, 
+  setDoc, 
+  deleteDoc 
+} from "firebase/firestore";
+import { 
+  Table, 
+  TableHeader, 
+  TableRow, 
+  TableHead, 
+  TableBody, 
+  TableCell 
+} from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -66,7 +81,8 @@ export default function AdminUsersPage() {
       if (user) {
         try {
           const userDoc = await getDoc(doc(db, "users", user.uid));
-          if (userDoc.exists() && (userDoc.data()?.role === "admin" || userDoc.data()?.isAdmin === true)) {
+          const userData = userDoc.data();
+          if (userDoc.exists() && (userData?.role === "admin" || userData?.isAdmin === true)) {
             setIsAdmin(true);
             fetchUsers();
           } else {
@@ -85,12 +101,47 @@ export default function AdminUsersPage() {
     } finally { setLoading(false); }
   };
 
+  /**
+   * Updated to sync 'role' and 'isAdmin' fields
+   */
   const handleUpdateUser = async (uid, data) => {
+    setIsProcessing(true);
     try {
-      await updateDoc(doc(db, "users", uid), { ...data, updatedAt: new Date() });
-      toast.success("Security permissions updated");
+      const userRef = doc(db, "users", uid);
+      const declinedRef = doc(db, "declinedUsers", uid);
+
+      // Create a local copy to manipulate fields
+      const updates = { ...data };
+
+      // Sync isAdmin toggle if role is being changed
+      if (updates.role) {
+        updates.isAdmin = updates.role === "admin";
+      }
+
+      // Sync role if isAdmin is being changed directly (fallback logic)
+      if (updates.isAdmin !== undefined && !updates.role) {
+        updates.role = updates.isAdmin ? "admin" : "user";
+      }
+
+      // Two-way Archive Cleanup
+      if (updates.isApproved === true) {
+        await deleteDoc(declinedRef);
+        updates.isDeclined = false;
+        updates.description = ""; 
+      }
+
+      await updateDoc(userRef, { 
+        ...updates, 
+        updatedAt: new Date() 
+      });
+
+      toast.success("Identity updated successfully");
       fetchUsers(); 
-    } catch (err) { toast.error("Sync failed"); }
+    } catch (err) {
+      toast.error("Update failed");
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   const handleDeclineUser = async () => {
@@ -100,23 +151,32 @@ export default function AdminUsersPage() {
       const userRef = doc(db, "users", selectedUser.uid);
       const declinedRef = doc(db, "declinedUsers", selectedUser.uid);
 
-      const updateData = {
+      // Use updateDoc to avoid overwriting existing fields like 'name', 'photoURL', etc.
+      await updateDoc(userRef, { 
+        isDeclined: true, 
+        isApproved: false, 
+        description: declineReason,
+        updatedAt: new Date()
+      });
+
+      // Archive record
+      await setDoc(declinedRef, {
         ...selectedUser,
         isApproved: false,
         isDeclined: true,
         description: declineReason,
         declinedAt: new Date(),
-      };
+      }, { merge: true });
 
-      await setDoc(declinedRef, updateData);
-      await updateDoc(userRef, { isDeclined: true, isApproved: false, description: declineReason });
-
-      toast.success("User access denied");
+      toast.success("User moved to archive");
       setIsDeclineDialogOpen(false);
       setDeclineReason("");
       fetchUsers();
-    } catch (err) { toast.error("Database error"); }
-    finally { setIsProcessing(false); }
+    } catch (err) {
+      toast.error("Database sync error");
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   const stats = useMemo(() => ({
@@ -144,14 +204,12 @@ export default function AdminUsersPage() {
     <div className="min-h-screen bg-[#0a0a0a] py-8 px-6 md:px-16 lg:px-24 font-sans text-slate-200">
       <div className="max-w-6xl mx-auto space-y-8">
         
-        {/* BREADCRUMB NAVIGATION */}
         <Breadcrumb className="mb-4">
           <BreadcrumbList>
             <BreadcrumbItem>
               <BreadcrumbLink asChild>
                 <Link href="/" className="flex items-center gap-1.5 text-slate-500 hover:text-white transition-colors cursor-pointer text-xs">
-                  <IconHome size={14} />
-                  Home
+                  <IconHome size={14} /> Home
                 </Link>
               </BreadcrumbLink>
             </BreadcrumbItem>
@@ -159,29 +217,28 @@ export default function AdminUsersPage() {
               <IconChevronRight size={12} className="text-slate-700" />
             </BreadcrumbSeparator>
             <BreadcrumbItem>
-              <BreadcrumbPage className="text-slate-300 text-xs font-medium">Identity Management</BreadcrumbPage>
+              <BreadcrumbPage className="text-slate-300 text-xs font-medium">Directory Management</BreadcrumbPage>
             </BreadcrumbItem>
           </BreadcrumbList>
         </Breadcrumb>
 
-        {/* HEADER SECTION */}
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
           <div className="space-y-1">
-            <h1 className="text-3xl font-semibold tracking-tight text-white italic">Management</h1>
-            <p className="text-slate-500 text-sm tracking-wide">System Access & Identity Logs</p>
+            <h1 className="text-3xl font-semibold tracking-tight text-white italic">Admin Dashboard</h1>
+            <p className="text-slate-500 text-sm tracking-wide">Manage user roles and system access</p>
           </div>
 
           <div className="flex flex-col sm:flex-row items-center gap-4">
             <Tabs value={activeTab} onValueChange={setActiveTab} className="bg-white/5 p-1 rounded-xl cursor-pointer">
               <TabsList className="bg-transparent">
-                <TabsTrigger value="active" className="rounded-lg text-xs cursor-pointer">Directory</TabsTrigger>
-                <TabsTrigger value="declined" className="rounded-lg text-xs cursor-pointer">Archive</TabsTrigger>
+                <TabsTrigger value="active" className="rounded-lg text-xs cursor-pointer px-6">Directory</TabsTrigger>
+                <TabsTrigger value="declined" className="rounded-lg text-xs cursor-pointer px-6">Archive</TabsTrigger>
               </TabsList>
             </Tabs>
             <div className="relative w-full sm:w-64">
               <IconSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600" size={14} />
               <Input 
-                placeholder="Find member..." 
+                placeholder="Search by name or email..." 
                 className="pl-9 bg-white/[0.03] border-white/5 text-xs text-white rounded-xl h-9 focus:ring-1 focus:ring-white/10"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
@@ -190,14 +247,13 @@ export default function AdminUsersPage() {
           </div>
         </div>
 
-        {/* STATUS UPDATES CARDS */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
           {[
-            { label: "Total Accounts", count: stats.total, icon: IconUsers, color: "text-blue-400" },
+            { label: "Total Users", count: stats.total, icon: IconUsers, color: "text-blue-400" },
             { label: "Approved", count: stats.approved, icon: IconChecklist, color: "text-green-400" },
             { label: "Declined", count: stats.declined, icon: IconBan, color: "text-red-400" },
           ].map((card, i) => (
-            <Card key={i} className="bg-white/[0.02] border-white/5 backdrop-blur-md rounded-2xl shadow-xl overflow-hidden hover:scale-[1.02] transition-transform duration-300">
+            <Card key={i} className="bg-white/[0.02] border-white/5 backdrop-blur-md rounded-2xl shadow-xl hover:scale-[1.02] transition-transform duration-300">
               <CardContent className="p-5 flex items-center justify-between">
                 <div className="space-y-1">
                   <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500 font-bold">{card.label}</p>
@@ -211,20 +267,19 @@ export default function AdminUsersPage() {
           ))}
         </div>
 
-        {/* DATA TABLE */}
         <Card className="bg-white/[0.01] border-white/5 backdrop-blur-3xl rounded-3xl overflow-hidden shadow-2xl">
           <Table>
             <TableHeader className="bg-white/[0.02]">
               <TableRow className="border-white/5 hover:bg-transparent">
-                <TableHead className="text-slate-500 text-[10px] uppercase tracking-widest pl-8 h-12">System Identity</TableHead>
-                <TableHead className="text-slate-500 text-[10px] uppercase tracking-widest h-12">Current Role</TableHead>
+                <TableHead className="text-slate-500 text-[10px] uppercase tracking-widest pl-8 h-12">User Identity</TableHead>
+                <TableHead className="text-slate-500 text-[10px] uppercase tracking-widest h-12">Role</TableHead>
                 <TableHead className="text-slate-500 text-[10px] uppercase tracking-widest h-12 text-center">Status</TableHead>
                 <TableHead className="text-slate-500 text-[10px] uppercase tracking-widest h-12 text-right pr-8">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filteredUsers.length === 0 ? (
-                 <TableRow><TableCell colSpan={4} className="h-40 text-center text-slate-600 text-xs italic tracking-widest">No entries found</TableCell></TableRow>
+                 <TableRow><TableCell colSpan={4} className="h-40 text-center text-slate-600 text-xs italic tracking-widest">No matching records</TableCell></TableRow>
               ) : (
                 filteredUsers.map((user) => (
                   <TableRow key={user.uid} className="border-white/5 hover:bg-white/[0.02] transition-colors group">
@@ -238,7 +293,7 @@ export default function AdminUsersPage() {
                         </Avatar>
                         <div className="flex flex-col">
                           <span className="text-slate-100 text-sm font-medium">
-                            {user.firstName || user.name || "Unknown Identity"}
+                            {user.firstName || user.name || "New Identity"}
                           </span>
                           <span className="text-[10px] text-slate-600 font-mono italic">{user.email}</span>
                         </div>
@@ -246,16 +301,18 @@ export default function AdminUsersPage() {
                     </TableCell>
                     
                     <TableCell>
-                      <Badge className={`border-none rounded-lg text-[9px] px-2 py-0 cursor-default ${user.role === 'admin' ? 'bg-violet-500/10 text-violet-400' : 'bg-slate-500/10 text-slate-500'}`}>
+                      <Badge className={`border-none rounded-lg text-[9px] px-2 py-0 cursor-default font-bold ${user.role === 'admin' ? 'bg-violet-500/10 text-violet-400' : 'bg-slate-500/10 text-slate-500'}`}>
                         {user.role === 'admin' ? <IconShieldCheck size={11} className="mr-1" /> : <IconUser size={11} className="mr-1" />}
-                        {user.role ? user.role.toUpperCase() : 'USER'}
+                        {(user.role || 'user').toUpperCase()}
                       </Badge>
                     </TableCell>
 
                     <TableCell className="text-center">
                       <div className="flex justify-center">
                         {user.isDeclined ? (
-                          <Badge variant="outline" className="text-[10px] text-red-500/70 border-red-500/20 bg-red-500/5 rounded-md py-0 cursor-default">Declined</Badge>
+                          <div className="flex items-center gap-1.5 text-[10px] text-red-500/70 border border-red-500/20 bg-red-500/5 px-2 py-0.5 rounded-md cursor-help" title={user.description}>
+                            <IconCircleXFilled size={12} /> Declined
+                          </div>
                         ) : user.isApproved ? (
                           <div className="flex items-center gap-1.5 text-[10px] text-green-400/80 font-medium cursor-default">
                             <IconCircleCheckFilled size={12} /> Approved
@@ -274,19 +331,19 @@ export default function AdminUsersPage() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="w-52 bg-[#0c0c0c] border-white/10 text-slate-300 rounded-xl shadow-2xl backdrop-blur-xl">
-                          <DropdownMenuLabel className="text-[9px] text-slate-600 uppercase tracking-widest p-3">Privilege Control</DropdownMenuLabel>
-                          <DropdownMenuItem className="text-xs focus:bg-white/5 cursor-pointer py-2" onClick={() => handleUpdateUser(user.uid, { isApproved: !user.isApproved, isDeclined: false })}>
-                            {user.isApproved ? "Revoke Access" : "Approve Account"}
+                          <DropdownMenuLabel className="text-[9px] text-slate-600 uppercase tracking-widest p-3">Privileges</DropdownMenuLabel>
+                          <DropdownMenuItem className="text-xs focus:bg-white/5 cursor-pointer py-2" onClick={() => handleUpdateUser(user.uid, { isApproved: !user.isApproved })}>
+                             {user.isApproved ? "Revoke Access" : "Approve Account"}
                           </DropdownMenuItem>
                           <DropdownMenuSeparator className="bg-white/5" />
                           <DropdownMenuItem className="text-xs focus:bg-white/5 cursor-pointer py-2" onClick={() => handleUpdateUser(user.uid, { role: user.role === 'admin' ? 'user' : 'admin' })}>
-                            {user.role === 'admin' ? "Make Regular User" : "Elevate to Admin"}
+                             {user.role === 'admin' ? "Demote to User" : "Elevate to Admin"}
                           </DropdownMenuItem>
                           {!user.isDeclined && (
                             <>
                               <DropdownMenuSeparator className="bg-white/5" />
                               <DropdownMenuItem className="text-xs focus:bg-red-500/10 text-red-400 cursor-pointer py-2" onClick={() => { setSelectedUser(user); setIsDeclineDialogOpen(true); }}>
-                                <IconUserX size={14} className="mr-2" /> Deny Access
+                                 <IconUserX size={14} className="mr-2" /> Deny Access
                               </DropdownMenuItem>
                             </>
                           )}
@@ -300,26 +357,29 @@ export default function AdminUsersPage() {
           </Table>
         </Card>
 
-        {/* DECLINE MODAL */}
         <Dialog open={isDeclineDialogOpen} onOpenChange={setIsDeclineDialogOpen}>
           <DialogContent className="bg-[#0f0f0f] border-white/10 text-slate-200 rounded-2xl max-w-sm">
             <DialogHeader>
-              <DialogTitle className="text-white text-lg font-semibold">Deny System Access</DialogTitle>
+              <DialogTitle className="text-white text-lg font-semibold tracking-tight">Block System Access</DialogTitle>
               <DialogDescription className="text-slate-500 text-xs">
                 Provide a justification for rejecting <strong>{selectedUser?.firstName || selectedUser?.email}</strong>.
               </DialogDescription>
             </DialogHeader>
             <div className="py-4">
               <Textarea 
-                placeholder="Ex: Unverified domain or restricted region..."
+                placeholder="Ex: Security risk..."
                 className="bg-white/[0.03] border-white/10 focus:ring-violet-500/30 min-h-[100px] text-xs"
                 value={declineReason}
                 onChange={(e) => setDeclineReason(e.target.value)}
               />
             </div>
-            <DialogFooter className="gap-2 sm:gap-0">
+            <DialogFooter className="gap-2 sm:gap-2">
               <Button variant="ghost" onClick={() => setIsDeclineDialogOpen(false)} className="text-slate-400 text-xs cursor-pointer">Cancel</Button>
-              <Button onClick={handleDeclineUser} className="bg-red-600 hover:bg-red-700 text-white text-xs px-6 h-9 rounded-lg cursor-pointer transition-colors" disabled={isProcessing}>
+              <Button 
+                onClick={handleDeclineUser} 
+                className="bg-red-600 hover:bg-red-700 text-white text-xs px-6 h-9 rounded-lg cursor-pointer transition-all" 
+                disabled={isProcessing}
+              >
                 {isProcessing ? "Saving..." : "Confirm Denial"}
               </Button>
             </DialogFooter>
