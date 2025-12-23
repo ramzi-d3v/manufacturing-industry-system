@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { getFirestoreDB, getFirebaseAuth } from "@/lib/firebase";
 import { onAuthStateChanged } from "firebase/auth";
 import { collection, getDocs, doc, updateDoc, getDoc, setDoc } from "firebase/firestore";
@@ -12,6 +13,14 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -32,7 +41,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { 
   IconLoader, IconSearch, IconDotsVertical, IconShieldCheck, 
   IconUser, IconCircleCheckFilled, IconCircleXFilled, IconUserX, 
-  IconUsers, IconBan, IconChecklist
+  IconUsers, IconBan, IconChecklist, IconChevronRight, IconHome
 } from "@tabler/icons-react";
 import { toast } from "sonner";
 
@@ -132,10 +141,30 @@ export default function AdminUsersPage() {
   );
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] py-12 px-6 md:px-16 lg:px-24 font-sans text-slate-200">
-      <div className="max-w-6xl mx-auto space-y-10">
+    <div className="min-h-screen bg-[#0a0a0a] py-8 px-6 md:px-16 lg:px-24 font-sans text-slate-200">
+      <div className="max-w-6xl mx-auto space-y-8">
         
-        {/* TOP HEADER */}
+        {/* BREADCRUMB NAVIGATION */}
+        <Breadcrumb className="mb-4">
+          <BreadcrumbList>
+            <BreadcrumbItem>
+              <BreadcrumbLink asChild>
+                <Link href="/" className="flex items-center gap-1.5 text-slate-500 hover:text-white transition-colors cursor-pointer text-xs">
+                  <IconHome size={14} />
+                  Home
+                </Link>
+              </BreadcrumbLink>
+            </BreadcrumbItem>
+            <BreadcrumbSeparator>
+              <IconChevronRight size={12} className="text-slate-700" />
+            </BreadcrumbSeparator>
+            <BreadcrumbItem>
+              <BreadcrumbPage className="text-slate-300 text-xs font-medium">Identity Management</BreadcrumbPage>
+            </BreadcrumbItem>
+          </BreadcrumbList>
+        </Breadcrumb>
+
+        {/* HEADER SECTION */}
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
           <div className="space-y-1">
             <h1 className="text-3xl font-semibold tracking-tight text-white italic">Management</h1>
@@ -194,75 +223,79 @@ export default function AdminUsersPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredUsers.map((user) => (
-                <TableRow key={user.uid} className="border-white/5 hover:bg-white/[0.02] transition-colors group">
-                  <TableCell className="py-5 pl-8">
-                    <div className="flex items-center gap-4">
-                      <Avatar className="h-9 w-9 grayscale contrast-125 border border-white/10 rounded-xl">
-                        <AvatarImage src={user.photoURL} />
-                        <AvatarFallback className="bg-slate-900 text-slate-500 text-[10px] font-bold">
-                          {(user.firstName?.[0] || user.email?.[0] || "?").toUpperCase()}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="flex flex-col">
-                        <span className="text-slate-100 text-sm font-medium">
-                          {user.firstName || user.name || "Unknown Identity"}
-                        </span>
-                        <span className="text-[10px] text-slate-600 font-mono italic">{user.email}</span>
-                      </div>
-                    </div>
-                  </TableCell>
-                  
-                  <TableCell>
-                    <Badge className={`border-none rounded-lg text-[9px] px-2 py-0 cursor-default ${user.role === 'admin' ? 'bg-violet-500/10 text-violet-400' : 'bg-slate-500/10 text-slate-500'}`}>
-                      {user.role === 'admin' ? <IconShieldCheck size={11} className="mr-1" /> : <IconUser size={11} className="mr-1" />}
-                      {user.role ? user.role.toUpperCase() : 'USER'}
-                    </Badge>
-                  </TableCell>
-
-                  <TableCell className="text-center">
-                    <div className="flex justify-center">
-                      {user.isDeclined ? (
-                        <Badge variant="outline" className="text-[10px] text-red-500/70 border-red-500/20 bg-red-500/5 rounded-md py-0 cursor-default">Declined</Badge>
-                      ) : user.isApproved ? (
-                        <div className="flex items-center gap-1.5 text-[10px] text-green-400/80 font-medium cursor-default">
-                          <IconCircleCheckFilled size={12} /> Approved
+              {filteredUsers.length === 0 ? (
+                 <TableRow><TableCell colSpan={4} className="h-40 text-center text-slate-600 text-xs italic tracking-widest">No entries found</TableCell></TableRow>
+              ) : (
+                filteredUsers.map((user) => (
+                  <TableRow key={user.uid} className="border-white/5 hover:bg-white/[0.02] transition-colors group">
+                    <TableCell className="py-5 pl-8">
+                      <div className="flex items-center gap-4">
+                        <Avatar className="h-9 w-9 grayscale contrast-125 border border-white/10 rounded-xl">
+                          <AvatarImage src={user.photoURL} />
+                          <AvatarFallback className="bg-slate-900 text-slate-500 text-[10px] font-bold">
+                            {(user.firstName?.[0] || user.email?.[0] || "?").toUpperCase()}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="flex flex-col">
+                          <span className="text-slate-100 text-sm font-medium">
+                            {user.firstName || user.name || "Unknown Identity"}
+                          </span>
+                          <span className="text-[10px] text-slate-600 font-mono italic">{user.email}</span>
                         </div>
-                      ) : (
-                        <div className="flex items-center gap-1 text-[10px] text-slate-600 bg-white/5 px-2 py-0.5 rounded-md cursor-default">Pending</div>
-                      )}
-                    </div>
-                  </TableCell>
+                      </div>
+                    </TableCell>
+                    
+                    <TableCell>
+                      <Badge className={`border-none rounded-lg text-[9px] px-2 py-0 cursor-default ${user.role === 'admin' ? 'bg-violet-500/10 text-violet-400' : 'bg-slate-500/10 text-slate-500'}`}>
+                        {user.role === 'admin' ? <IconShieldCheck size={11} className="mr-1" /> : <IconUser size={11} className="mr-1" />}
+                        {user.role ? user.role.toUpperCase() : 'USER'}
+                      </Badge>
+                    </TableCell>
 
-                  <TableCell className="text-right pr-8">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="sm" className="h-8 w-8 text-slate-600 hover:text-white rounded-lg cursor-pointer">
-                          <IconDotsVertical size={18} />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="w-52 bg-[#0c0c0c] border-white/10 text-slate-300 rounded-xl shadow-2xl backdrop-blur-xl">
-                        <DropdownMenuLabel className="text-[9px] text-slate-600 uppercase tracking-widest p-3">Privilege Control</DropdownMenuLabel>
-                        <DropdownMenuItem className="text-xs focus:bg-white/5 cursor-pointer py-2" onClick={() => handleUpdateUser(user.uid, { isApproved: !user.isApproved, isDeclined: false })}>
-                           {user.isApproved ? "Revoke Access" : "Approve Account"}
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator className="bg-white/5" />
-                        <DropdownMenuItem className="text-xs focus:bg-white/5 cursor-pointer py-2" onClick={() => handleUpdateUser(user.uid, { role: user.role === 'admin' ? 'user' : 'admin' })}>
-                           {user.role === 'admin' ? "Make Regular User" : "Elevate to Admin"}
-                        </DropdownMenuItem>
-                        {!user.isDeclined && (
-                          <>
-                            <DropdownMenuSeparator className="bg-white/5" />
-                            <DropdownMenuItem className="text-xs focus:bg-red-500/10 text-red-400 cursor-pointer py-2" onClick={() => { setSelectedUser(user); setIsDeclineDialogOpen(true); }}>
-                               <IconUserX size={14} className="mr-2" /> Deny Access
-                            </DropdownMenuItem>
-                          </>
+                    <TableCell className="text-center">
+                      <div className="flex justify-center">
+                        {user.isDeclined ? (
+                          <Badge variant="outline" className="text-[10px] text-red-500/70 border-red-500/20 bg-red-500/5 rounded-md py-0 cursor-default">Declined</Badge>
+                        ) : user.isApproved ? (
+                          <div className="flex items-center gap-1.5 text-[10px] text-green-400/80 font-medium cursor-default">
+                            <IconCircleCheckFilled size={12} /> Approved
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-1 text-[10px] text-slate-600 bg-white/5 px-2 py-0.5 rounded-md cursor-default">Pending</div>
                         )}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
-                </TableRow>
-              ))}
+                      </div>
+                    </TableCell>
+
+                    <TableCell className="text-right pr-8">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="sm" className="h-8 w-8 text-slate-600 hover:text-white rounded-lg cursor-pointer">
+                            <IconDotsVertical size={18} />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-52 bg-[#0c0c0c] border-white/10 text-slate-300 rounded-xl shadow-2xl backdrop-blur-xl">
+                          <DropdownMenuLabel className="text-[9px] text-slate-600 uppercase tracking-widest p-3">Privilege Control</DropdownMenuLabel>
+                          <DropdownMenuItem className="text-xs focus:bg-white/5 cursor-pointer py-2" onClick={() => handleUpdateUser(user.uid, { isApproved: !user.isApproved, isDeclined: false })}>
+                            {user.isApproved ? "Revoke Access" : "Approve Account"}
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator className="bg-white/5" />
+                          <DropdownMenuItem className="text-xs focus:bg-white/5 cursor-pointer py-2" onClick={() => handleUpdateUser(user.uid, { role: user.role === 'admin' ? 'user' : 'admin' })}>
+                            {user.role === 'admin' ? "Make Regular User" : "Elevate to Admin"}
+                          </DropdownMenuItem>
+                          {!user.isDeclined && (
+                            <>
+                              <DropdownMenuSeparator className="bg-white/5" />
+                              <DropdownMenuItem className="text-xs focus:bg-red-500/10 text-red-400 cursor-pointer py-2" onClick={() => { setSelectedUser(user); setIsDeclineDialogOpen(true); }}>
+                                <IconUserX size={14} className="mr-2" /> Deny Access
+                              </DropdownMenuItem>
+                            </>
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
             </TableBody>
           </Table>
         </Card>
