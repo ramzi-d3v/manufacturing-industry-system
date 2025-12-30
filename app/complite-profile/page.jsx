@@ -3,7 +3,6 @@ import { useEffect, useState } from "react";
 import { auth } from "@/lib/firebase"; 
 import { onAuthStateChanged, reload } from "firebase/auth";
 
-// Your Components
 import { EmailVerificationAlert } from "@/components/VerificationEmailPending";
 import { StepperFormDemo } from "@/container/stapper";
 import { ApprovalGuard } from "@/components/post-complete";
@@ -12,21 +11,19 @@ export default function CompleteProfilePage() {
   const [user, setUser] = useState(null);
   const [emailVerified, setEmailVerified] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
-  const [isLoading, setIsLoading] = useState(true); // Added to prevent UI flash
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // 1. Check Local Storage on mount (Survives reloads and shared across tabs)
-    const postState = localStorage.getItem('poststate');
-    if (postState === '1') {
-      setIsSubmitted(true);
-    }
-
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       if (currentUser) {
         setUser(currentUser);
         setEmailVerified(currentUser.emailVerified);
+        
+        // Only set isSubmitted if this specific user has a record of it
+        const savedState = localStorage.getItem(`poststate_${currentUser.uid}`);
+        savedState === '1'
       }
-      setIsLoading(false); // Stop loading once auth is checked
+      setIsLoading(false);
     });
 
     const interval = setInterval(async () => {
@@ -44,25 +41,20 @@ export default function CompleteProfilePage() {
     };
   }, []);
 
-  // 2. Handle the completion from the Stepper
-  const handleComplete = (val) => {
-    localStorage.setItem('poststate', '1'); // Persist for other tabs/reloads
-    setIsSubmitted(val); 
-  };
-
-  // 3. Show nothing (null) while checking auth and storage to prevent "flash"
+  // 1. Loading State
   if (isLoading) return null;
 
-  // 4. Ensure email is verified before showing anything else
-  if (!emailVerified) {
+  // 2. Security Gate
+  if (user && !emailVerified) {
     return <EmailVerificationAlert />;
-  } 
+  }
 
-  // 5. If submitted (from state or localStorage), lock into ApprovalGuard
+  // 3. Post-Submission State
   if (isSubmitted) {
     return <ApprovalGuard user={user} />;
   }
 
+  // 4. Default State: Profile Form
   return (
     <div className="h-screen bg-[#0a0a0a] flex flex-col items-center justify-center px-6 font-sans text-slate-200 overflow-hidden">
       <div className="w-full max-w-6xl flex flex-col h-auto"> 
@@ -70,7 +62,7 @@ export default function CompleteProfilePage() {
         <header className="w-full mb-8">
           <div className="flex items-end justify-between pb-3">
             <div className="space-y-0.5">
-              <h1 className="text-xl font-semibold tracking-tight text-white ">
+              <h1 className="text-xl font-semibold tracking-tight text-white">
                 Complete Profile
               </h1>
               <p className="text-slate-500 text-[11px] leading-relaxed">
@@ -87,18 +79,14 @@ export default function CompleteProfilePage() {
             </div>
           </div>
 
-          <div className="relative h-[3px] w-full">
-             <div 
-                className="absolute inset-0 bg-gradient-to-r from-violet-500 via-violet-500/40 to-transparent" 
-                style={{ clipPath: 'polygon(0 0, 100% 45%, 100% 55%, 0 100%)' }} 
-             />
+          {/* FIXED SEPARATOR LINE: Added height and thickness effect at the end */}
+          <div className="relative h-[1px] w-full bg-white/5 overflow-hidden">
+             <div className="absolute inset-0 bg-gradient-to-r from-violet-500 via-violet-500/40 to-transparent w-full shadow-[0_0_8px_rgba(139,92,246,0.8)]" />
           </div>
         </header>
 
         <main className="w-full">
-          <div className="">
-            <StepperFormDemo onComplete={handleComplete} />
-          </div>
+          <StepperFormDemo onComplete={(val) => setIsSubmitted(val)} />
         </main>
 
         <footer className="mt-6">
