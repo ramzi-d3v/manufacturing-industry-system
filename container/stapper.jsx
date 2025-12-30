@@ -64,6 +64,7 @@ export function StepperFormDemo({ onComplete }) {
     accountNumber: "",
     recipientName: "",
     recipientPhone: "",
+    documentUrls: [], 
   });
 
   const update = (k, v) => setForm((p) => ({ ...p, [k]: v }));
@@ -79,7 +80,6 @@ export function StepperFormDemo({ onComplete }) {
     });
   }, []);
 
-  // --- VALIDATION LOGIC ---
   const isStepValid = () => {
     if (step === 0) {
       return (
@@ -111,7 +111,7 @@ export function StepperFormDemo({ onComplete }) {
         return form.recipientName.trim() !== "" && form.recipientPhone.trim() !== "";
       }
     }
-    return true; // Step 3 (Documents) usually has internal validation in FileUpload
+    return true;
   };
 
   const nextStep = () => {
@@ -133,43 +133,67 @@ export function StepperFormDemo({ onComplete }) {
       const uid = user.uid;
       const timestamp = serverTimestamp();
 
-      const companyData = { uid, ...form, updatedAt: timestamp };
+      // 1. Company Information
+      const companyInfo = {
+        uid,
+        companyName: form.companyName,
+        tin: form.tin,
+        description: form.description,
+        brelaName: form.brelaName,
+        businessLicenceYear: form.businessLicenceYear,
+        location: form.location,
+        updatedAt: timestamp,
+      };
 
+      // 2. Personal Information
+      const personalInfo = {
+        uid,
+        firstName: form.firstName,
+        phone: form.phone,
+        email: form.email,
+        role: form.role,
+        gender: form.gender,
+        isAdmin: false,
+        isApproved: false,
+        createdAt: timestamp,
+      };
+
+      // 3. Financial Information
+      let financialInfo = { uid, paymentMethod: form.paymentMethod, updatedAt: timestamp };
+      if (form.paymentMethod === "card") {
+        financialInfo = { ...financialInfo, cardNumber: form.cardNumber, expiry: form.expiry, cvv: form.cvv };
+      } else if (form.paymentMethod === "bank") {
+        financialInfo = { ...financialInfo, bankName: form.bankName, accountNumber: form.accountNumber };
+      } else if (form.paymentMethod === "cash") {
+        financialInfo = { ...financialInfo, recipientName: form.recipientName, recipientPhone: form.recipientPhone };
+      }
+
+      // 4. File Information
+      const fileInfo = {
+        uid,
+        urls: form.documentUrls,
+        uploadedAt: timestamp,
+        status: "pending"
+      };
+
+      // Save to specific collections
       await Promise.all([
-        setDoc(doc(db, "company_details", uid), {
-            uid,
-            companyName: form.companyName,
-            tin: form.tin,
-            description: form.description,
-            brelaName: form.brelaName,
-            businessLicenceYear: form.businessLicenceYear,
-            location: form.location,
-            updatedAt: timestamp,
-        }),
-        setDoc(doc(db, "user_details", uid), {
-            uid,
-            firstName: form.firstName,
-            phone: form.phone,
-            email: form.email,
-            role: form.role,
-            gender: form.gender,
-            createdAt: timestamp,
-            isAdmin: false,
-            isApproved: false,
-            isDeclined: false,
-        })
-       
+        setDoc(doc(db, "company_details", uid), companyInfo),
+        setDoc(doc(db, "user_details", uid), personalInfo),
+        setDoc(doc(db, "payment_info", uid), financialInfo),
+        setDoc(doc(db, "company_documents", uid), fileInfo),
       ]);
 
-      toast.success("Submitted!");
+      toast.success("All data synchronized!");
 
       if (onComplete) {
-      localStorage.setItem("completed", JSON.stringify(true));
+        localStorage.setItem("completed", JSON.stringify(true));
         onComplete(true);
-        }
+      }
 
     } catch (err) {
-      toast.error("Submission failed");
+      console.error(err);
+      toast.error("Sync failed");
     } finally {
       setLoading(false);
     }
@@ -304,7 +328,7 @@ export function StepperFormDemo({ onComplete }) {
 
               {step === 3 && (
                 <motion.div variants={itemVariants}>
-                  <FileUpload />
+                  <FileUpload onUploadComplete={(urls) => update("documentUrls", urls)} />
                 </motion.div>
               )}
             </motion.div>
@@ -328,15 +352,15 @@ export function StepperFormDemo({ onComplete }) {
             type="button" 
             onClick={onSubmit}
             disabled={loading}
-            className="bg-violet-600 hover:bg-violet-700 text-white px-8 cursor-pointer"
+            className="bg-violet-600 hover:bg-violet-700 text-white px-8 cursor-pointer shadow-[0_0_20px_rgba(139,92,246,0.3)]"
           >
-            {loading ? "Submitting..." : "Complete Registration"}
+            {loading ? "Authorizing..." : "Complete Registration"}
           </Button>
         ) : (
           <Button 
             type="button" 
             onClick={nextStep} 
-            disabled={!isStepValid()} // Button visually shows it's locked until forms are filled
+            disabled={!isStepValid()}
             className={`${!isStepValid() ? "bg-white/5 text-slate-600" : "bg-white/10 hover:bg-white/20 text-white"} px-8 transition-colors cursor-pointer`}
           >
             Next Step

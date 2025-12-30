@@ -21,7 +21,10 @@ export default function CompleteProfilePage() {
         
         // Only set isSubmitted if this specific user has a record of it
         const savedState = localStorage.getItem(`poststate_${currentUser.uid}`);
-        savedState === '1'
+        if (savedState === "1") {
+         setIsSubmitted(true);
+          }
+
       }
       setIsLoading(false);
     });
@@ -86,7 +89,15 @@ export default function CompleteProfilePage() {
         </header>
 
         <main className="w-full">
-          <StepperFormDemo onComplete={(val) => setIsSubmitted(val)} />
+          <StepperFormDemo
+            onComplete={(val) => {
+              if (val && user) {
+                localStorage.setItem(`poststate_${user.uid}`, "1");
+              }
+              setIsSubmitted(val);
+            }}
+          />
+
         </main>
 
         <footer className="mt-6">
