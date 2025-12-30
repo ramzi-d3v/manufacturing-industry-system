@@ -7,21 +7,33 @@ import { auth } from "@/lib/firebase";
 
 export default function ProtectedPage({ children }) {
   const router = useRouter();
-  const [user, setUser] = useState(null);
+  const [allowed, setAllowed] = useState(false);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      //  Not logged in
       if (!currentUser) {
-        router.replace("/signup"); 
-      } else {
-        setUser(currentUser);
+        setAllowed(false);
+        router.replace("/signup");
+        return;
       }
+
+      //  Email not verified
+      if (!currentUser.emailVerified) {
+        setAllowed(false);
+        router.replace("/complite-profile"); 
+        return;
+      }
+
+  
+      setAllowed(true);
     });
 
-    return () => unsubscribe(); // Cleanup listener
+    return () => unsubscribe();
   }, [router]);
 
-  if (!user) return null; // Render nothing until user is set
+  //Block render until allowed
+  if (!allowed) return null;
 
   return <>{children}</>;
 }

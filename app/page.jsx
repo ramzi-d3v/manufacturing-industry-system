@@ -1,6 +1,6 @@
 "use client";
 
-import ProtectedPage from "@/container/firewall";
+import ProtectedPage from "@/container/ProtectRoot";
 import { auth } from "@/lib/firebase";
 import { signOut } from "firebase/auth";
 import { useRouter } from "next/navigation";
