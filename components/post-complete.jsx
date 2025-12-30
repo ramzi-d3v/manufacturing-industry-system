@@ -17,7 +17,7 @@ export function ApprovalGuard({ user, children }) {
   useEffect(() => {
     if (!user) return;
 
-    const unsub = onSnapshot(doc(db, "users", user.uid), (snap) => {
+    const unsub = onSnapshot(doc(db, "user_details", user.uid), (snap) => {
       if (snap.exists()) {
         const data = snap.data();
         const isApproved = !!data?.isApproved;
@@ -30,7 +30,7 @@ export function ApprovalGuard({ user, children }) {
 
         // AUTO-ROUTE: If approved, send them to the home page immediately
         if (isApproved) {
-          router.push("/");
+          router.replace("/");
         }
       }
      
@@ -42,7 +42,7 @@ export function ApprovalGuard({ user, children }) {
   // Function to let declined users reset and try again
   const handleResetProfile = async () => {
     try {
-      const userRef = doc(db, "users", user.uid);
+      const userRef = doc(db, "user_details", user.uid);
       await updateDoc(userRef, {
         isDeclined: false,
         isSubmitted: false, // Allows them back into the completion form
@@ -132,7 +132,7 @@ export function ApprovalGuard({ user, children }) {
               onClick={() => window.location.reload()}
               className="group flex items-center gap-2 px-8 py-2.5 rounded-full border border-white/10 text-white/50 hover:text-white hover:border-violet-500/50 hover:bg-violet-500/5 transition-all duration-300 text-xs font-bold uppercase tracking-widest cursor-pointer"
             >
-              Check for Update
+              RELOAD
               <ChevronRight className="size-3 group-hover:translate-x-1 transition-transform" />
             </button>
           ) : (

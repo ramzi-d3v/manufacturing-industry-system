@@ -3,37 +3,66 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { onAuthStateChanged } from "firebase/auth";
-import { auth } from "@/lib/firebase";
+import { doc, getDoc } from "firebase/firestore";
+import { auth, db } from "@/lib/firebase"; // Ensure db (getFirestore) is exported from your config
 
 export default function ProtectedPage({ children }) {
   const router = useRouter();
   const [allowed, setAllowed] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      //  Not logged in
-      if (!currentUser) {
-        setAllowed(false);
+    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+      try {
+        // 1. Check if the user is authenticated
+        if (!currentUser) {
+          router.replace("/signup");
+          return;
+        }
+
+        // 2. Optional: Check if email is verified
+        if (!currentUser.emailVerified) {
+          router.replace("/complite-profile"); // Or wherever your verification logic lives
+          return;
+        }
+
+        // 3. Fetch user approval status from Firestore
+        const userDocRef = doc(db, "user_details", currentUser.uid);
+        const userDoc = await getDoc(userDocRef);
+
+        if (userDoc.exists()) {
+          const userData = userDoc.data();
+
+          if (userData.isApproved === true) {
+            setAllowed(true);
+            router.replace("/");
+          } else {
+            // User exists but is not yet approved
+            router.replace("/complite-profile"); 
+          }
+        } else {
+          // No user document found in Firestore
+          router.replace("/complite-profile");
+        }
+      } catch (error) {
+        console.error("Auth protection error:", error);
         router.replace("/signup");
-        return;
+      } finally {
+        setLoading(false);
       }
-
-      //  Email not verified
-      if (!currentUser.emailVerified) {
-        setAllowed(false);
-        router.replace("/complite-profile"); 
-        return;
-      }
-
-  
-      setAllowed(true);
     });
 
     return () => unsubscribe();
   }, [router]);
 
-  //Block render until allowed
-  if (!allowed) return null;
+  // Show a clean loading state while verifying credentials
+  if (loading) {
+    return (
+      <div className="flex h-screen w-full items-center justify-center bg-black">
+        <div className="h-6 w-6 animate-spin rounded-full border-2 border-violet-500 border-t-transparent" />
+      </div>
+    );
+  }
 
-  return <>{children}</>;
+  return allowed ? <>{children}</> : null;
 }
