@@ -1,14 +1,22 @@
-import { SignupForm } from "@/components/signup-form"
+import { SignupForm } from "@/components/signup-form";
 import GuestOnlyPage from "@/container/GuestOnlyProtection";
+
 export default function SignupPage() {
-  
   return (
     <GuestOnlyPage>
-    <div className="bg-background flex min-h-svh flex-col items-center justify-center gap-6 p-6 md:p-10">
-      <div className="w-full max-w-sm">
-        <SignupForm />
+      <div className="relative h-screen w-full flex items-center justify-center bg-[#050505] p-4 overflow-hidden">
+        
+        {/* Background Ambient Glows (SAME AS LOGIN) */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          <div className="absolute top-[-5%] left-[-5%] w-[40%] h-[40%] rounded-full bg-violet-600/10 blur-[100px]" />
+          <div className="absolute bottom-[-5%] right-[-5%] w-[40%] h-[40%] rounded-full bg-fuchsia-600/10 blur-[100px]" />
+        </div>
+
+        {/* Form Container */}
+        <div className="relative z-10 w-full max-w-[440px] p-6">
+          <SignupForm />
+        </div>
       </div>
-    </div>
-  </GuestOnlyPage>
-  )
+    </GuestOnlyPage>
+  );
 }

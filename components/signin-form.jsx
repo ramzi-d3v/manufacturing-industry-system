@@ -67,7 +67,7 @@ export function LoginForm({ className, ...props }) {
           
           {/* Header - No Logo */}
           <div className="flex flex-col items-center gap-1 text-center mb-8">
-            <h1 className="text-2xl font-bold tracking-tighter text-white uppercase italic">
+            <h1 className="text-2xl  tracking-tighter text-white uppercase ">
               Welcome Back
             </h1>
             <p className="text-[10px] text-slate-500 uppercase tracking-[0.2em] font-medium">
@@ -75,7 +75,7 @@ export function LoginForm({ className, ...props }) {
               <button 
                 type="button"
                 onClick={() => router.replace("/signup")}
-                className="text-violet-400 font-bold hover:text-violet-300 transition-colors cursor-pointer ml-1"
+                className="text-violet-400  hover:text-violet-300 transition-colors cursor-pointer ml-1"
               >
                 Create Account
               </button>
@@ -128,10 +128,10 @@ export function LoginForm({ className, ...props }) {
             {/* Primary Action */}
             <Button 
               type="submit" 
-              className="w-full h-11 rounded-xl bg-white text-black font-bold uppercase tracking-widest text-[11px] hover:bg-slate-200 transition-all active:scale-[0.98] cursor-pointer"
+              className="w-full  rounded-xl bg-slate-300 text-black  uppercase tracking-widest text-[11px] hover:bg-slate-200 transition-all active:scale-[0.98] cursor-pointer"
               disabled={loading}
             >
-              {loading ? "Authorizing..." : "Sign In"}
+              {loading ? "Singing .." : "Sign In"}
             </Button>
 
             <div className="relative py-2">
@@ -139,7 +139,7 @@ export function LoginForm({ className, ...props }) {
                 <span className="w-full border-t border-white/5"></span>
               </div>
               <div className="relative flex justify-center text-[9px] uppercase tracking-[0.3em] text-slate-600">
-                <span className="bg-[#050505] px-2 font-bold italic">Identity Sync</span>
+                <span className="bg-[#050505] px-2  ">or</span>
               </div>
             </div>
 
@@ -147,7 +147,7 @@ export function LoginForm({ className, ...props }) {
             <Button
               variant="outline"
               type="button"
-              className="w-full h-11 rounded-xl border-white/10 bg-transparent text-white hover:bg-white/5 transition-all text-[11px] font-bold uppercase tracking-widest cursor-pointer"
+              className="w-full h-11 rounded-xl border-white/10 bg-transparent text-white hover:bg-white/5 transition-all text-[11px]  uppercase tracking-widest cursor-pointer"
               onClick={handleGoogleLogin}
             >
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="mr-2 size-3.5">
@@ -156,7 +156,7 @@ export function LoginForm({ className, ...props }) {
                   fill="currentColor"
                 />
               </svg>
-              Google Auth
+              continue with Google
             </Button>
           </form>
 

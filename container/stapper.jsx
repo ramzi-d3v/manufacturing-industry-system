@@ -153,18 +153,21 @@ export function StepperFormDemo({ onComplete }) {
             email: form.email,
             role: form.role,
             gender: form.gender,
-            updatedAt: timestamp,
-        }),
-        setDoc(doc(db, "users", uid), {
-          uid,
-          isSubmitted: true,
-          status: "pending",
-          updatedAt: timestamp,
-        }, { merge: true })
+            createdAt: timestamp,
+            isAdmin: false,
+            isApproved: false,
+            isDeclined: false,
+        })
+       
       ]);
 
       toast.success("Submitted!");
-      if (onComplete) onComplete(true);
+
+      if (onComplete) {
+      localStorage.setItem("completed", JSON.stringify(true));
+        onComplete(true);
+        }
+
     } catch (err) {
       toast.error("Submission failed");
     } finally {
