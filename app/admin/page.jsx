@@ -80,7 +80,7 @@ export default function AdminUsersPage() {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
         try {
-          const userDoc = await getDoc(doc(db, "users", user.uid));
+          const userDoc = await getDoc(doc(db, "user_details", user.uid));
           const userData = userDoc.data();
           if (userDoc.exists() && (userData?.role === "admin" || userData?.isAdmin === true)) {
             setIsAdmin(true);
@@ -96,7 +96,7 @@ export default function AdminUsersPage() {
 
   const fetchUsers = async () => {
     try {
-      const snapshot = await getDocs(collection(db, "users"));
+      const snapshot = await getDocs(collection(db, "user_details"));
       setUsers(snapshot.docs.map(d => ({ uid: d.id, ...d.data() })));
     } finally { setLoading(false); }
   };
@@ -107,7 +107,7 @@ export default function AdminUsersPage() {
   const handleUpdateUser = async (uid, data) => {
     setIsProcessing(true);
     try {
-      const userRef = doc(db, "users", uid);
+      const userRef = doc(db, "user_details", uid);
       const declinedRef = doc(db, "declinedUsers", uid);
 
       // Create a local copy to manipulate fields
@@ -148,7 +148,7 @@ export default function AdminUsersPage() {
     if (!declineReason.trim()) return toast.error("Please provide a reason");
     setIsProcessing(true);
     try {
-      const userRef = doc(db, "users", selectedUser.uid);
+      const userRef = doc(db, "user_details", selectedUser.uid);
       const declinedRef = doc(db, "declinedUsers", selectedUser.uid);
 
       // Use updateDoc to avoid overwriting existing fields like 'name', 'photoURL', etc.
@@ -301,7 +301,7 @@ export default function AdminUsersPage() {
                     </TableCell>
                     
                     <TableCell>
-                      <Badge className={`border-none rounded-lg text-[9px] px-2 py-0 cursor-default font-bold ${user.role === 'admin' ? 'bg-violet-500/10 text-violet-400' : 'bg-slate-500/10 text-slate-500'}`}>
+                      <Badge className={`border-none rounded-lg text-[9px] px-3 py-1 cursor-default font-bold ${user.role === 'admin' ? 'bg-violet-500/10 text-violet-400' : 'bg-slate-500/10 text-slate-500'}`}>
                         {user.role === 'admin' ? <IconShieldCheck size={11} className="mr-1" /> : <IconUser size={11} className="mr-1" />}
                         {(user.role || 'user').toUpperCase()}
                       </Badge>

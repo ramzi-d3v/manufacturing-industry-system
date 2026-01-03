@@ -56,13 +56,6 @@ export default function ProtectedPage({ children }) {
   }, [router]);
 
   // Show a clean loading state while verifying credentials
-  if (loading) {
-    return (
-      <div className="flex h-screen w-full items-center justify-center bg-black">
-        <div className="h-6 w-6 animate-spin rounded-full border-2 border-violet-500 border-t-transparent" />
-      </div>
-    );
-  }
-
+  
   return allowed ? <>{children}</> : null;
 }
