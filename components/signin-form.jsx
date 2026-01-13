@@ -13,6 +13,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { motion } from "framer-motion";
+import { Loader2 } from "lucide-react";
 
 export function LoginForm({ className, ...props }) {
   const router = useRouter();
@@ -128,10 +129,17 @@ export function LoginForm({ className, ...props }) {
             {/* Primary Action */}
             <Button 
               type="submit" 
-              className="w-full  rounded-xl bg-slate-300 text-black  uppercase tracking-widest text-[11px] hover:bg-slate-200 transition-all active:scale-[0.98] cursor-pointer"
+              className="w-full  rounded-xl bg-slate-300 text-black  uppercase  text-[11px] hover:bg-slate-200 transition-all active:scale-[0.98] cursor-pointer"
               disabled={loading}
             >
-              {loading ? "Singing .." : "Sign In"}
+              {loading ? (
+    <>
+      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+      Please wait
+    </>
+  ) : (
+    "Sign In"
+  )}
             </Button>
 
             <div className="relative py-2">
@@ -170,7 +178,7 @@ export function LoginForm({ className, ...props }) {
               <span className="size-1 bg-white/10 rounded-full" />
               <a href="#" className="hover:text-white transition-colors cursor-pointer border-b border-transparent hover:border-white/20">Cookie Policy</a>
             </div>
-            <p className="mt-1 opacity-40">© 2024 Pro Inc. All Rights Reserved.</p>
+            <p className="mt-1 opacity-40">© 2026 Pro Inc. All Rights Reserved.</p>
           </div>
         </div>
       </motion.div>

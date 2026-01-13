@@ -354,7 +354,7 @@ export function StepperFormDemo({ onComplete }) {
             disabled={loading}
             className="bg-violet-600 hover:bg-violet-700 text-white px-8 cursor-pointer shadow-[0_0_20px_rgba(139,92,246,0.3)]"
           >
-            {loading ? "Authorizing..." : "Complete Registration"}
+            {loading ? "submiting .." : "Complete Registration"}
           </Button>
         ) : (
           <Button 
