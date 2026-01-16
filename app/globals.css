@@ -158,3 +158,12 @@ select:-webkit-autofill {
   animation: fadeSlide 0.3s ease-in-out;
 }
 
+@layer utilities {
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+  .scrollbar-hide {
+    -ms-overflow-style: none; /* IE and Edge */
+    scrollbar-width: none; /* Firefox */
+  }
+}
