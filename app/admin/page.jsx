@@ -202,6 +202,13 @@ export default function AdminUsersPage() {
 
   return (
     <div className="min-h-screen bg-[#0a0a0a] py-8 px-6 md:px-16 lg:px-24 font-sans text-slate-200">
+     <div className="pointer-events-none absolute inset-0 overflow-hidden">
+            {/* Top Left Glow */}
+            <div className="absolute -top-[10%] -left-[10%] h-[300px] w-[300px] rounded-full bg-purple-600/20 blur-[120px]" />
+            {/* Center Right Glow */}
+            <div className="absolute top-[20%] -right-[5%] h-[400px] w-[400px] rounded-full bg-indigo-500/15 blur-[100px]" />
+            {/* Bottom Left Glow */}
+           </div>
       <div className="max-w-6xl mx-auto space-y-8">
         
         <Breadcrumb className="mb-4">

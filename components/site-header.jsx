@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/breadcrumb"
 import { Button } from "@/components/ui/button"
 import { Inter } from "next/font/google"
+import  ActionSearchBar  from "@/components/search-bar"
 import { cn } from "@/lib/utils"
 
 const inter = Inter({
@@ -61,18 +62,9 @@ export function SiteHeader() {
             </BreadcrumbList>
           </Breadcrumb>
 
-          <div className="ml-auto flex items-center gap-2">
+          <div className="ml-auto flex items-center justify-center gap-2">
             {/* Search Bar: No bold, Inter font */}
-            <Button 
-              variant="outline" 
-              className="h-9 w-40 lg:w-64 justify-start px-3 text-xs font-normal text-muted-foreground gap-3 border-white/10 bg-zinc-900/40 hover:bg-zinc-800 hidden md:flex rounded-lg"
-            >
-              <Search className="size-4" />
-              <span className="flex-1 text-left">Search...</span>
-              <kbd className="hidden lg:inline-flex h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] opacity-70">
-                ⌘K
-              </kbd>
-            </Button>
+            <ActionSearchBar />
 
             <Button variant="ghost" size="icon" className="h-9 w-9 md:hidden">
               <Search className="size-5" />

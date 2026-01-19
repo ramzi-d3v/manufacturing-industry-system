@@ -1,18 +1,17 @@
 "use client"
 
 import * as React from "react"
-import Link from "next/link" // Import Link for Next.js navigation
-import { usePathname } from "next/navigation" // To highlight the active page
+import Link from "next/link"
+import { usePathname } from "next/navigation"
 import { 
   IconCirclePlusFilled, 
-  IconMail, 
   IconChevronRight,
-  IconLayoutDashboard,
-  IconWallet,
-  IconSettings,
+  IconStack2,      // Batches
+  IconBox,         // Products
+  IconTruckDelivery, // Logistics/Incoming
+  IconPackageExport  // Outgoing
 } from "@tabler/icons-react";
 
-import { Button } from "@/components/ui/button"
 import {
   Collapsible,
   CollapsibleContent,
@@ -30,108 +29,137 @@ import {
 } from "@/components/ui/sidebar"
 import { cn } from "@/lib/utils"
 
-// Hardcoded menu items with specific Next.js routes
-const menus = [
-  {
-    title: "Dashboard",
-    icon: IconLayoutDashboard,
-    isActive: true,
-    items: [
-      { title: "Overview", url: "/dashboard" },
-      { title: "Analytics", url: "/dashboard/analytics" },
-    ],
-  },
-  {
-    title: "Finances",
-    icon: IconWallet,
-    items: [
-      { title: "Expenses", url: "/dashboard/expenses" },
-      { title: "Revenue", url: "/dashboard/revenue" },
-      { title: "Invoices", url: "/dashboard/invoices" },
-    ],
-  },
-  {
-    title: "Management",
-    icon: IconSettings,
-    items: [
-      { title: "User Details", url: "/dashboard/profile" },
-      { title: "Security", url: "/dashboard/security" },
-    ],
-  },
-]
-
 export function NavMain() {
-  const pathname = usePathname() // Detects which page you are currently on
+  const pathname = usePathname()
 
   return (
     <SidebarGroup>
       <SidebarGroupContent className="flex flex-col gap-2">
-        {/* Quick Actions */}
+        
+        {/* Quick Action */}
         <SidebarMenu>
-          <SidebarMenuItem className="flex items-center gap-2">
+          <SidebarMenuItem>
             <SidebarMenuButton
-              tooltip="Quick Create"
-              className="bg-primary text-primary-foreground hover:bg-primary/90 min-w-8"
+              tooltip="New Production Order"
+              className="bg-primary text-primary-foreground hover:bg-slate-600 cursor-pointer"
             >
-              <IconCirclePlusFilled />
-              <span>Quick Create</span>
+              <IconCirclePlusFilled size={18} />
+              <span>Quick Action</span>
             </SidebarMenuButton>
-            <Button
-              size="icon"
-              className="size-8 group-data-[collapsible=icon]:opacity-0 transition-opacity"
-              variant="outline"
-              asChild
-            >
-              <Link href="/dashboard/inbox">
-                <IconMail />
-                <span className="sr-only">Inbox</span>
-              </Link>
-            </Button>
           </SidebarMenuItem>
         </SidebarMenu>
 
-        {/* Collapsible Main Menus */}
         <SidebarMenu>
-          {menus.map((group) => (
-            <Collapsible
-              key={group.title}
-              asChild
-              defaultOpen={group.isActive}
-              className="group/collapsible"
+          {/* 1. Batches - Collapsible */}
+          <Collapsible
+            asChild
+            defaultOpen={true}
+            className="group/collapsible"
+          >
+            <SidebarMenuItem>
+              <CollapsibleTrigger asChild>
+                <SidebarMenuButton tooltip="Batches">
+                  <IconStack2 size={18} stroke={1.5} />
+                  <span className="font-medium">Batches</span>
+                  <IconChevronRight className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90 text-zinc-500" />
+                </SidebarMenuButton>
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <SidebarMenuSub>
+                  <SidebarMenuSubItem>
+                    <SidebarMenuSubButton asChild isActive={pathname === "/batches/raw-material"}>
+                      <Link href="/batches/raw-material">
+                        <span className={cn(
+                          "transition-colors text-xs",
+                          pathname === "/batches/raw-material" ? "text-purple-400 font-medium" : "text-zinc-400"
+                        )}>
+                          Raw Material Batch
+                        </span>
+                      </Link>
+                    </SidebarMenuSubButton>
+                  </SidebarMenuSubItem>
+                  
+                  <SidebarMenuSubItem>
+                    <SidebarMenuSubButton asChild isActive={pathname === "/batches/finished"}>
+                      <Link href="/batches/finished">
+                        <span className={cn(
+                          "transition-colors text-xs",
+                          pathname === "/batches/finished" ? "text-purple-400 font-medium" : "text-zinc-400"
+                        )}>
+                          Finished Production Batch
+                        </span>
+                      </Link>
+                    </SidebarMenuSubButton>
+                  </SidebarMenuSubItem>
+                </SidebarMenuSub>
+              </CollapsibleContent>
+            </SidebarMenuItem>
+          </Collapsible>
+
+          {/* 2. Logistics & Flow - Collapsible */}
+          <Collapsible
+            asChild
+            className="group/collapsible"
+          >
+            <SidebarMenuItem>
+              <CollapsibleTrigger asChild>
+                <SidebarMenuButton tooltip="Logistics">
+                  <IconTruckDelivery size={18} stroke={1.5} />
+                  <span className="font-medium">Flow & Logistics</span>
+                  <IconChevronRight className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90 text-zinc-500" />
+                </SidebarMenuButton>
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <SidebarMenuSub>
+                  <SidebarMenuSubItem>
+                    <SidebarMenuSubButton asChild isActive={pathname === "/logistics/incoming"}>
+                      <Link href="/logistics/incoming">
+                        <span className={cn(
+                          "transition-colors text-xs",
+                          pathname === "/logistics/incoming" ? "text-purple-400 font-medium" : "text-zinc-400"
+                        )}>
+                          Incoming Supply
+                        </span>
+                      </Link>
+                    </SidebarMenuSubButton>
+                  </SidebarMenuSubItem>
+                  
+                  <SidebarMenuSubItem>
+                    <SidebarMenuSubButton asChild isActive={pathname === "/logistics/outgoing"}>
+                      <Link href="/logistics/outgoing">
+                        <span className={cn(
+                          "transition-colors text-xs",
+                          pathname === "/logistics/outgoing" ? "text-purple-400 font-medium" : "text-zinc-400"
+                        )}>
+                          Outgoing Production
+                        </span>
+                      </Link>
+                    </SidebarMenuSubButton>
+                  </SidebarMenuSubItem>
+                </SidebarMenuSub>
+              </CollapsibleContent>
+            </SidebarMenuItem>
+          </Collapsible>
+
+          {/* 3. Products - Standalone */}
+          <SidebarMenuItem>
+            <SidebarMenuButton 
+              asChild 
+              tooltip="Products & Catalog"
+              isActive={pathname === "/products"}
             >
-              <SidebarMenuItem>
-                <CollapsibleTrigger asChild>
-                  <SidebarMenuButton tooltip={group.title}>
-                    {group.icon && <group.icon size={18} />}
-                    <span className="font-medium">{group.title}</span>
-                    <IconChevronRight className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90 text-zinc-500" />
-                  </SidebarMenuButton>
-                </CollapsibleTrigger>
-                <CollapsibleContent>
-                  <SidebarMenuSub>
-                    {group.items?.map((subItem) => (
-                      <SidebarMenuSubItem key={subItem.title}>
-                        <SidebarMenuSubButton 
-                          asChild 
-                          // Highlights the sub-item if the URL matches the current page
-                          isActive={pathname === subItem.url}
-                        >
-                          <Link href={subItem.url}>
-                            <span className={cn(
-                              "transition-colors",
-                              pathname === subItem.url ? "text-purple-400 font-semibold" : "text-zinc-400"
-                            )}>
-                              {subItem.title}
-                            </span>
-                          </Link>
-                        </SidebarMenuSubButton>
-                      </SidebarMenuSubItem>
-                    ))}
-                  </SidebarMenuSub>
-                </CollapsibleContent>
-              </SidebarMenuItem>
-            </Collapsible>
-          ))}
+              <Link href="/products">
+                <IconBox size={18} stroke={1.5} />
+                <span className={cn(
+                  "font-medium",
+                  pathname === "/products" ? "text-purple-400" : ""
+                )}>
+                  Products & Catalog
+                </span>
+              </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+
         </SidebarMenu>
       </SidebarGroupContent>
     </SidebarGroup>
