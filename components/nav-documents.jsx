@@ -5,8 +5,8 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { 
   IconReceipt2,
-  IconFileAnalytics,
   IconBolt,
+  IconTruckDelivery,
 } from "@tabler/icons-react"
 
 import {
@@ -33,9 +33,9 @@ export function NavDocuments({ ...props }) {
       icon: IconReceipt2,
     },
     {
-      title: "Delivery Report",
-      url: "/dashboard/reports/delivery",
-      icon: IconFileAnalytics,
+      title: "Logistics & Flow",
+      url: "/dashboard/logistics",
+      icon: IconTruckDelivery,
     },
     {
       title: "Energy Consumption",

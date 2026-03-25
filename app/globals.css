@@ -171,3 +171,32 @@ select:-webkit-autofill {
     scrollbar-width: none; /* Firefox */
   }
 }
+
+
+:root {
+  --font-roboto: 'Roboto', sans-serif;
+}
+
+body {
+  font-family: var(--font-roboto);
+}
+
+
+@keyframes grow-slow {
+  0% {
+    transform: translate(-50%, -50%) scale(0.8);
+    opacity: 0.4;
+  }
+  50% {
+    transform: translate(-50%, -50%) scale(1.2);
+    opacity: 0.7;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(0.8);
+    opacity: 0.4;
+  }
+}
+
+.animate-grow-slow {
+  animation: grow-slow 8s ease-in-out infinite;
+}

@@ -186,7 +186,7 @@ function ActionSearchBar({ actions = allActionsSample, defaultOpen = false }) {
   }, []);
 
   return (
-    <div className="w-full max-w-xl mx-auto ">
+    <div className="w-full max-w-xl mx-auto">
       <div className="relative flex flex-col justify-start items-center min-h-[300px]">
         <div className="w-full max-w-sm sticky top-0 bg-transparent z-10 pt-4 pb-1">
          

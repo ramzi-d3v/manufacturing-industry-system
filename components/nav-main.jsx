@@ -6,10 +6,9 @@ import { usePathname } from "next/navigation"
 import { 
   IconCirclePlusFilled, 
   IconChevronRight,
-  IconStack2,      // Batches
+  IconStack2,      // Raw Materials
   IconBox,         // Products
-  IconTruckDelivery, // Logistics/Incoming
-  IconPackageExport  // Outgoing
+  IconPackageExport  // Finished Products
 } from "@tabler/icons-react";
 
 import {
@@ -41,7 +40,7 @@ export function NavMain() {
           <SidebarMenuItem>
             <SidebarMenuButton
               tooltip="New Production Order"
-              className="bg-primary text-primary-foreground hover:bg-slate-600 cursor-pointer"
+              className="bg-primary text-primary-foreground hover:bg-slate-600 cursor-pointer hover:backdrop-blur-sm hover:bg-white/10 transition-all duration-200"
             >
               <IconCirclePlusFilled size={18} />
               <span>Quick Action</span>
@@ -50,7 +49,7 @@ export function NavMain() {
         </SidebarMenu>
 
         <SidebarMenu>
-          {/* 1. Batches - Collapsible */}
+          {/* 1. Raw Materials - Collapsible */}
           <Collapsible
             asChild
             defaultOpen={true}
@@ -58,35 +57,46 @@ export function NavMain() {
           >
             <SidebarMenuItem>
               <CollapsibleTrigger asChild>
-                <SidebarMenuButton tooltip="Batches">
+                <SidebarMenuButton 
+                  tooltip="Raw Materials"
+                  className="cursor-pointer hover:backdrop-blur-sm hover:bg-white/10 transition-all duration-200"
+                >
                   <IconStack2 size={18} stroke={1.5} />
-                  <span className="font-medium">Batches</span>
+                  <span className="font-medium">Raw Materials</span>
                   <IconChevronRight className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90 text-zinc-500" />
                 </SidebarMenuButton>
               </CollapsibleTrigger>
               <CollapsibleContent>
                 <SidebarMenuSub>
                   <SidebarMenuSubItem>
-                    <SidebarMenuSubButton asChild isActive={pathname === "/batches/raw-material"}>
-                      <Link href="/batches/raw-material">
+                    <SidebarMenuSubButton 
+                      asChild 
+                      isActive={pathname === "/raw-materials/inventory"}
+                      className="cursor-pointer hover:backdrop-blur-sm hover:bg-white/10 transition-all duration-200"
+                    >
+                      <Link href="/raw-materials/inventory">
                         <span className={cn(
                           "transition-colors text-xs",
-                          pathname === "/batches/raw-material" ? "text-purple-400 font-medium" : "text-zinc-400"
+                          pathname === "/raw-materials/inventory" ? "text-purple-400 font-medium" : "text-zinc-400"
                         )}>
-                          Raw Material Batch
+                          Inventory
                         </span>
                       </Link>
                     </SidebarMenuSubButton>
                   </SidebarMenuSubItem>
                   
                   <SidebarMenuSubItem>
-                    <SidebarMenuSubButton asChild isActive={pathname === "/batches/finished"}>
-                      <Link href="/batches/finished">
+                    <SidebarMenuSubButton 
+                      asChild 
+                      isActive={pathname === "/raw-materials/defect-report"}
+                      className="cursor-pointer hover:backdrop-blur-sm hover:bg-white/10 transition-all duration-200"
+                    >
+                      <Link href="/raw-materials/defect-report">
                         <span className={cn(
                           "transition-colors text-xs",
-                          pathname === "/batches/finished" ? "text-purple-400 font-medium" : "text-zinc-400"
+                          pathname === "/raw-materials/defect-report" ? "text-purple-400 font-medium" : "text-zinc-400"
                         )}>
-                          Finished Production Batch
+                          Defect Report
                         </span>
                       </Link>
                     </SidebarMenuSubButton>
@@ -96,42 +106,53 @@ export function NavMain() {
             </SidebarMenuItem>
           </Collapsible>
 
-          {/* 2. Logistics & Flow - Collapsible */}
+          {/* 2. Finished Products - Collapsible */}
           <Collapsible
             asChild
             className="group/collapsible"
           >
             <SidebarMenuItem>
               <CollapsibleTrigger asChild>
-                <SidebarMenuButton tooltip="Logistics">
-                  <IconTruckDelivery size={18} stroke={1.5} />
-                  <span className="font-medium">Flow & Logistics</span>
+                <SidebarMenuButton 
+                  tooltip="Finished Products"
+                  className="cursor-pointer hover:backdrop-blur-sm hover:bg-white/10 transition-all duration-200"
+                >
+                  <IconPackageExport size={18} stroke={1.5} />
+                  <span className="font-medium">Finished Products</span>
                   <IconChevronRight className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90 text-zinc-500" />
                 </SidebarMenuButton>
               </CollapsibleTrigger>
               <CollapsibleContent>
                 <SidebarMenuSub>
                   <SidebarMenuSubItem>
-                    <SidebarMenuSubButton asChild isActive={pathname === "/logistics/incoming"}>
-                      <Link href="/logistics/incoming">
+                    <SidebarMenuSubButton 
+                      asChild 
+                      isActive={pathname === "/finished-products/inventory"}
+                      className="cursor-pointer hover:backdrop-blur-sm hover:bg-white/10 transition-all duration-200"
+                    >
+                      <Link href="/finished-products/inventory">
                         <span className={cn(
                           "transition-colors text-xs",
-                          pathname === "/logistics/incoming" ? "text-purple-400 font-medium" : "text-zinc-400"
+                          pathname === "/finished-products/inventory" ? "text-purple-400 font-medium" : "text-zinc-400"
                         )}>
-                          Incoming Supply
+                          Inventory
                         </span>
                       </Link>
                     </SidebarMenuSubButton>
                   </SidebarMenuSubItem>
                   
                   <SidebarMenuSubItem>
-                    <SidebarMenuSubButton asChild isActive={pathname === "/logistics/outgoing"}>
-                      <Link href="/logistics/outgoing">
+                    <SidebarMenuSubButton 
+                      asChild 
+                      isActive={pathname === "/finished-products/defect-report"}
+                      className="cursor-pointer hover:backdrop-blur-sm hover:bg-white/10 transition-all duration-200"
+                    >
+                      <Link href="/finished-products/defect-report">
                         <span className={cn(
                           "transition-colors text-xs",
-                          pathname === "/logistics/outgoing" ? "text-purple-400 font-medium" : "text-zinc-400"
+                          pathname === "/finished-products/defect-report" ? "text-purple-400 font-medium" : "text-zinc-400"
                         )}>
-                          Outgoing Production
+                          Defect Report
                         </span>
                       </Link>
                     </SidebarMenuSubButton>
@@ -147,6 +168,7 @@ export function NavMain() {
               asChild 
               tooltip="Products & Catalog"
               isActive={pathname === "/products"}
+              className="cursor-pointer hover:backdrop-blur-sm hover:bg-white/10 transition-all duration-200"
             >
               <Link href="/products">
                 <IconBox size={18} stroke={1.5} />

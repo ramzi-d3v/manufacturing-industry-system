@@ -29,7 +29,7 @@ export default function Page() {
         }}
       >
         <AppSidebar variant="inset" />
-        <SidebarInset>
+        <SidebarInset >
           <SiteHeader className="relative overflow-hidden bg-zinc-950" />
           <div className="pointer-events-none absolute inset-0 overflow-hidden">
             {/* Top Left Glow */}
