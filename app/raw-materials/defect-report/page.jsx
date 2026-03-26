@@ -527,8 +527,8 @@ export default function DefectReportPage() {
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
               <div>
                 <h1 className="text-3xl lg:text-4xl tracking-tight text-foreground flex items-center gap-2">
-                  <IconBug className="h-8 w-8 text-destructive" />
-                  Defect Report
+                  
+                  Raw Material Defect Report
                 </h1>
                 <p className="text-muted-foreground mt-1 text-sm italic">
                   Track and analyze material defects and losses
@@ -861,7 +861,7 @@ export default function DefectReportPage() {
             <div className="flex flex-col gap-3 mb-6">
               <div className="flex flex-col sm:flex-row gap-3">
                 <div className="flex-1 relative">
-                  <IconSearch className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <IconSearch className="absolute z-10 left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
                     placeholder="Search by material, supplier, ID..."
                     value={searchQuery}

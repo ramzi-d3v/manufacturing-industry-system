@@ -457,7 +457,7 @@ export default function RawMaterialPage() {
               </p>
             </div>
             <div className="flex gap-2">
-              <Button onClick={handleAddClick} className="cursor-pointer">
+              <Button onClick={handleAddClick} variant="outline" className="cursor-pointer">
                 <IconPlus className="mr-2 h-4 w-4" />
                 Add Material
               </Button>
@@ -621,7 +621,7 @@ export default function RawMaterialPage() {
             {/* Main search and actions row */}
             <div className="flex flex-col sm:flex-row gap-3">
               <div className="flex-1 relative">
-                <IconSearch className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <IconSearch className="z-10absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
                   placeholder="Search by name, batch number, supplier, category..."
                   value={searchQuery}
