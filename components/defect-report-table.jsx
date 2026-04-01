@@ -46,6 +46,10 @@ import {
   IconCheck,
   IconClock,
   IconX,
+  IconBarcode,
+  IconPhone,
+  IconMail,
+  IconBug,
 } from "@tabler/icons-react";
 import {
   flexRender,
@@ -58,6 +62,14 @@ import {
   useReactTable,
 } from "@tanstack/react-table";
 import { toast } from "sonner";
+import { auth, db } from "@/lib/firebase";
+import {
+  collection,
+  getDocs,
+  doc,
+  updateDoc,
+  deleteDoc,
+} from "firebase/firestore";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -86,7 +98,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Separator } from "@/components/ui/separator";
 import {
   Table,
   TableBody,
@@ -100,9 +111,9 @@ import { cn } from "@/lib/utils";
 
 // risk_level options
 const risk_levelOptions = [
-  { value: "Low", label: "Low" },
-  { value: "Medium", label: "Medium" },
-  { value: "High", label: "High" },
+  { value: "Low", label: "Low", color: "text-green-600" },
+  { value: "Medium", label: "Medium", color: "text-yellow-600" },
+  { value: "High", label: "High", color: "text-red-600" },
 ];
 
 // Status options
@@ -116,27 +127,27 @@ const statusOptions = [
 
 // Defect source options
 const defectSourceOptions = [
-  { value: "supplier", label: "Supplier Defect" },
-  { value: "warehouse", label: "Warehouse Damage" },
-  { value: "handling", label: "Handling Damage" },
-  { value: "storage", label: "Storage Issue" },
+  { value: "supplier", label: "Supplier Defect", icon: IconBuildingStore },
+  { value: "warehouse", label: "Warehouse Damage", icon: IconBuildingWarehouse },
+  { value: "handling", label: "Handling Damage", icon: IconTruck },
+  { value: "storage", label: "Storage Issue", icon: IconBuildingWarehouse },
 ];
 
-// Status icon mapping
-const getStatusIcon = (status) => {
+// Status color mapping
+const getStatusColor = (status) => {
   switch (status) {
     case "Resolved":
-      return <IconCheck className="h-4 w-4 text-green-500" />;
+      return "bg-green-500/10 text-green-600 dark:text-green-400";
     case "Under Investigation":
-      return <IconClock className="h-4 w-4 text-yellow-500" />;
+      return "bg-yellow-500/10 text-yellow-600 dark:text-yellow-400";
     case "Reported to Supplier":
-      return <IconTruck className="h-4 w-4 text-blue-500" />;
+      return "bg-blue-500/10 text-blue-600 dark:text-blue-400";
     case "Credit Note Issued":
-      return <IconCurrencyDollar className="h-4 w-4 text-purple-500" />;
+      return "bg-purple-500/10 text-purple-600 dark:text-purple-400";
     case "Written Off":
-      return <IconX className="h-4 w-4 text-red-500" />;
+      return "bg-red-500/10 text-red-600 dark:text-red-400";
     default:
-      return null;
+      return "bg-muted text-muted-foreground";
   }
 };
 
@@ -184,9 +195,9 @@ function DraggableRow({ row }) {
   );
 }
 
-
+// Report Viewer Dialog
 function ReportViewerDialog({ report, open, onOpenChange, onEdit, onDelete }) {
-  const getrisk_levelColor = (risk_level) => {
+  const getRiskLevelColor = (risk_level) => {
     switch (risk_level) {
       case "High":
         return "bg-red-500/10 text-red-600 dark:text-red-400";
@@ -199,160 +210,200 @@ function ReportViewerDialog({ report, open, onOpenChange, onEdit, onDelete }) {
     }
   };
 
-  const getStatusColor = (status) => {
-    switch (status) {
-      case "Resolved":
-        return "bg-green-500/10 text-green-600 dark:text-green-400";
-      case "Under Investigation":
-        return "bg-yellow-500/10 text-yellow-600 dark:text-yellow-400";
-      case "Reported to Supplier":
-        return "bg-blue-500/10 text-blue-600 dark:text-blue-400";
-      case "Credit Note Issued":
-        return "bg-purple-500/10 text-purple-600 dark:text-purple-400";
-      case "Written Off":
-        return "bg-red-500/10 text-red-600 dark:text-red-400";
-      default:
-        return "bg-muted text-muted-foreground";
-    }
-  };
-
   if (!report) return null;
+
+  const totalLoss = (report.quantity || 0) * (report.costPerUnit || 0);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent 
-        className="w-[90vw] max-w-[90vw] sm:w-[85vw] sm:max-w-[85vw] md:w-[80vw] md:max-w-[80vw] lg:w-[75vw] lg:max-w-[75vw] xl:w-[70vw] xl:max-w-[70vw] p-6 gap-4 bg-background"
+        className="w-[95vw] max-w-[95vw] sm:w-[90vw] sm:max-w-[90vw] md:w-[85vw] md:max-w-[85vw] lg:w-[80vw] lg:max-w-[80vw] xl:w-[70vw] xl:max-w-[70vw] max-h-[90vh] p-4 sm:p-6 gap-4 bg-background/95 backdrop-blur-md border-border/50 overflow-y-auto"
         showCloseButton={true}
       >
-        {/* Header - Minimal */}
-        <div className=" mt-5 flex items-center justify-between">
-          <div>
-            <DialogTitle className="text-xl font-semibold">
-              Defect Report Details
-            </DialogTitle>
-            <DialogDescription className="text-xs text-muted-foreground mt-1 flex items-center gap-2">
-              <span>#{report.id?.slice(0, 8)}</span>
-              <span>•</span>
-              <span>{report.reportDate}</span>
-            </DialogDescription>
-          </div>
-        
-        </div>
+        <DialogHeader>
+          <DialogTitle className="text-xl sm:text-2xl flex items-center gap-2">
+            <IconBug className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
+            Defect Report Details
+          </DialogTitle>
+          <DialogDescription className="text-xs sm:text-sm flex items-center gap-2 flex-wrap">
+            <span className="flex items-center gap-1">
+              <IconHash className="h-3 w-3" />
+              Report ID: {report.id?.slice(0, 8)}
+            </span>
+            <span>•</span>
+            <span className="flex items-center gap-1">
+              <IconCalendar className="h-3 w-3" />
+              Date: {report.defectDate}
+            </span>
+            <span>•</span>
+            <span className="flex items-center gap-1">
+              <IconClock className="h-3 w-3" />
+              Reported: {report.reportDate}
+            </span>
+          </DialogDescription>
+        </DialogHeader>
 
-        {/* Content - Compact Grid Layout */}
-        <div className="mt-5 grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
           {/* Left Column */}
           <div className="space-y-4">
             {/* Material Info */}
-            <div className="flex items-start gap-3 pb-3 border-b">
-              <div className="p-2 bg-primary/5 rounded-lg">
-                <IconPackage className="h-5 w-5 text-primary" />
+            <div className="p-3 sm:p-4 bg-primary/5 rounded-lg border border-primary/10">
+              <div className="flex items-start justify-between">
+                <div className="flex items-center gap-2">
+                  <IconPackage className="h-5 w-5 text-primary" />
+                  <div>
+                    <p className="text-xs text-muted-foreground uppercase tracking-wider">Material</p>
+                    <p className="text-base font-medium mt-0.5">{report.materialName}</p>
+                    {report.materialId && (
+                      <p className="text-[10px] text-muted-foreground">ID: {report.materialId?.slice(0, 8)}</p>
+                    )}
+                  </div>
+                </div>
+                <Badge className={cn("text-[10px] sm:text-xs", getRiskLevelColor(report.risk_level))}>
+                  Risk: {report.risk_level}
+                </Badge>
               </div>
-              <div className="flex-1">
-                <p className="text-xs text-muted-foreground uppercase tracking-wider">Material</p>
-                <p className="text-base font-medium mt-0.5">{report.materialName}</p>
-                <p className="text-xs text-muted-foreground mt-0.5">{report.supplier}</p>
-              </div>
-              <div className="text-right">
-                <p className="text-xs text-muted-foreground">Total Loss</p>
-                <p className="text-lg font-bold text-destructive">${report.totalLoss.toLocaleString()}</p>
+            </div>
+
+            {/* Batch Information */}
+            <div>
+              <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2 flex items-center gap-2">
+                <IconBarcode className="h-3.5 w-3.5" />
+                Batch Information
+              </h3>
+              <div className="grid grid-cols-2 gap-3 text-sm">
+                <div>
+                  <p className="text-xs text-muted-foreground">Batch Number</p>
+                  <p className="font-mono text-sm">{report.batchNumber || "N/A"}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Unit</p>
+                  <p>{report.unit || "kg"}</p>
+                </div>
               </div>
             </div>
 
             {/* Defect Information */}
-            <div className="">
-              <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-2">
-                <IconFileReport className="h-3.5 w-3.5" />
+            <div>
+              <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2 flex items-center gap-2">
+                <IconBug className="h-3.5 w-3.5" />
                 Defect Information
               </h3>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <p className="text-xs text-muted-foreground">Defect Date</p>
-                  <p className="text-sm mt-0.5">{report.defectDate}</p>
-                </div>
+              <div className="grid grid-cols-2 gap-3 text-sm">
                 <div>
                   <p className="text-xs text-muted-foreground">Defect Type</p>
-                  <p className="text-sm mt-0.5">{report.defectType}</p>
+                  <p>{report.defectType || "N/A"}</p>
                 </div>
                 <div>
-                  <p className="text-xs text-muted-foreground">Batch Number</p>
-                  <p className="text-sm mt-0.5">{report.batchNumber || "N/A"}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">Location</p>
-                  <p className="text-sm mt-0.5">{report.location || "N/A"}</p>
+                  <p className="text-xs text-muted-foreground">Defect Source</p>
+                  <Badge variant="outline" className="text-[10px] mt-1">
+                    {defectSourceOptions.find(o => o.value === report.defectSource)?.label || report.defectSource}
+                  </Badge>
                 </div>
               </div>
             </div>
+
+            {/* Location */}
+            {(report.location || report.warehouseName) && (
+              <div>
+                <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2 flex items-center gap-2">
+                  <IconMapPin className="h-3.5 w-3.5" />
+                  Location
+                </h3>
+                <p className="text-sm">{report.warehouseName || report.location || "N/A"}</p>
+                {report.warehouseId && (
+                  <p className="text-[10px] text-muted-foreground">ID: {report.warehouseId?.slice(0, 8)}</p>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Right Column */}
           <div className="space-y-4">
-            {/* Stats Row */}
-            <div className="grid grid-cols-2 gap-3">
-              <div className="p-3 rounded-lg bg-muted/30">
-                <div className="flex items-center gap-1.5 mb-1">
-                  <IconAlertTriangle className="h-3.5 w-3.5 text-muted-foreground" />
-                  <p className="text-xs text-muted-foreground">Risk Level</p>
-                </div>
-                <Badge className={cn("text-xs px-2 py-0.5", getrisk_levelColor(report.risk_level))}>
-                  {report.risk_level}
-                </Badge>
-              </div>
-              <div className="p-3 rounded-lg bg-muted/30">
-                <div className="flex items-center gap-1.5 mb-1">
-                  {report.defectSource === "supplier" ? (
-                    <IconTruck className="h-3.5 w-3.5 text-muted-foreground" />
-                  ) : (
-                    <IconBuildingWarehouse className="h-3.5 w-3.5 text-muted-foreground" />
-                  )}
-                  <p className="text-xs text-muted-foreground">Damage Source</p>
-                </div>
-                <p className="text-sm">{report.defectSource === "supplier" ? "Supplier" : "Warehouse"}</p>
+            {/* Supplier Information */}
+            <div>
+              <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2 flex items-center gap-2">
+                <IconBuildingStore className="h-3.5 w-3.5" />
+                Supplier Information
+              </h3>
+              <div className="bg-muted/30 rounded-lg p-3 space-y-2">
+                <p className="font-medium text-sm">{report.supplierName || report.supplier || "N/A"}</p>
+                {report.supplierId && (
+                  <p className="text-[10px] text-muted-foreground">ID: {report.supplierId?.slice(0, 8)}</p>
+                )}
+                {report.supplierContact && (
+                  <div className="flex items-center gap-2 text-xs">
+                    <IconUser className="h-3 w-3 text-muted-foreground" />
+                    <span>{report.supplierContact}</span>
+                  </div>
+                )}
+                {report.supplierPhone && (
+                  <div className="flex items-center gap-2 text-xs">
+                    <IconPhone className="h-3 w-3 text-muted-foreground" />
+                    <span>{report.supplierPhone}</span>
+                  </div>
+                )}
+                {report.supplierEmail && (
+                  <div className="flex items-center gap-2 text-xs">
+                    <IconMail className="h-3 w-3 text-muted-foreground" />
+                    <span className="truncate">{report.supplierEmail}</span>
+                  </div>
+                )}
               </div>
             </div>
 
-           {/* Financial & Reporting Details */}
-<div>
-  <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-2">
-    <IconCurrencyDollar className="h-3.5 w-3.5" />
-    Financial & Reporting Details
-  </h3>
-  <div className="grid grid-cols-2 gap-3">
-    
-    <div>
-      <p className="text-xs text-muted-foreground">Quantity</p>
-      <p className="text-sm mt-0.5">{report.quantity} {report.unit}</p>
-    </div>
-    <div>
-      <p className="text-xs text-muted-foreground">Cost per Unit</p>
-      <p className="text-sm mt-0.5">${report.costPerUnit}</p>
-    </div>
-    <div>
-      <p className="text-xs text-muted-foreground">Status</p>
-      <Badge className={cn("text-xs px-2 py-0.5 mt-0.5", getStatusColor(report.status))}>
-        {report.status}
-      </Badge>
-    </div>
-    <div>
-      <p className="text-xs text-muted-foreground">Reported By</p>
-      <p className="text-sm mt-0.5">{report.reportedBy}</p>
-    </div>
-  </div>
-</div>
+            {/* Financial Details */}
+            <div>
+              <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2 flex items-center gap-2">
+                <IconCurrencyDollar className="h-3.5 w-3.5" />
+                Financial Details
+              </h3>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="p-2 bg-muted/30 rounded-lg">
+                  <p className="text-[10px] text-muted-foreground">Quantity</p>
+                  <p className="text-sm font-medium">{report.quantity} {report.unit}</p>
+                </div>
+                <div className="p-2 bg-muted/30 rounded-lg">
+                  <p className="text-[10px] text-muted-foreground">Cost/Unit</p>
+                  <p className="text-sm font-medium">${report.costPerUnit}</p>
+                </div>
+                <div className="p-2 bg-destructive/10 rounded-lg col-span-2">
+                  <p className="text-[10px] text-muted-foreground">Total Loss</p>
+                  <p className="text-lg font-bold text-destructive">${totalLoss.toLocaleString()}</p>
+                </div>
+              </div>
+            </div>
 
-           
+            {/* Status & Reporting */}
+            <div>
+              <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2 flex items-center gap-2">
+                <IconClock className="h-3.5 w-3.5" />
+                Status & Reporting
+              </h3>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <p className="text-xs text-muted-foreground">Status</p>
+                  <Badge className={cn("text-[10px] mt-1", getStatusColor(report.status))}>
+                    {report.status}
+                  </Badge>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Reported By</p>
+                  <p className="text-sm">{report.reportedBy || "System"}</p>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
-        {/* Description Section - Full Width */}
+        {/* Description - Full Width */}
         {report.description && (
-          <div className="mt-2 pt-3 border-t">
+          <div className="pt-3 border-t border-border/50">
             <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2 flex items-center gap-2">
               <IconNotes className="h-3.5 w-3.5" />
               Description
             </h3>
-            <p className="text-sm text-muted-foreground line-clamp-2">{report.description}</p>
+            <p className="text-sm text-muted-foreground">{report.description}</p>
           </div>
         )}
 
@@ -363,17 +414,12 @@ function ReportViewerDialog({ report, open, onOpenChange, onEdit, onDelete }) {
               <IconFileReport className="h-3.5 w-3.5" />
               Action Taken
             </h3>
-            <p className="text-sm text-muted-foreground line-clamp-2">{report.actionTaken}</p>
+            <p className="text-sm text-muted-foreground">{report.actionTaken}</p>
           </div>
         )}
 
-        {/* Footer Actions */}
         <DialogFooter className="flex flex-row justify-end gap-2 pt-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => onOpenChange(false)}
-          >
+          <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>
             Close
           </Button>
           <Button
@@ -403,20 +449,70 @@ function ReportViewerDialog({ report, open, onOpenChange, onEdit, onDelete }) {
     </Dialog>
   );
 }
-// Edit report component - Fixed null error
+
+// Edit Report Component - Uses same data structure as add
 function ReportEditor({ report, open, onOpenChange, onSave }) {
   const [formData, setFormData] = React.useState(null);
+  const [suppliers, setSuppliers] = React.useState([]);
+  const [warehouses, setWarehouses] = React.useState([]);
+  const [rawMaterials, setRawMaterials] = React.useState([]);
+  const [selectedSupplierDetails, setSelectedSupplierDetails] = React.useState(null);
+  const [selectedWarehouseDetails, setSelectedWarehouseDetails] = React.useState(null);
+
+  // Fetch data from Firestore
+  React.useEffect(() => {
+    const fetchData = async () => {
+      const user = auth.currentUser;
+      if (!user) return;
+
+      try {
+        const suppliersRef = collection(db, "suppliers", user.uid, "list");
+        const suppliersSnap = await getDocs(suppliersRef);
+        setSuppliers(suppliersSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+
+        const warehousesRef = collection(db, "warehouses", user.uid, "list");
+        const warehousesSnap = await getDocs(warehousesRef);
+        setWarehouses(warehousesSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+
+        const materialsRef = collection(db, "rawMaterials", user.uid, "materials");
+        const materialsSnap = await getDocs(materialsRef);
+        setRawMaterials(materialsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+      } catch (error) {
+        console.error("Error fetching data:", error);
+      }
+    };
+
+    if (open) {
+      fetchData();
+    }
+  }, [open]);
 
   React.useEffect(() => {
     if (report) {
-      setFormData(report);
+      setFormData({ ...report });
+      
+      if (report.supplierId) {
+        const supplier = suppliers.find(s => s.id === report.supplierId);
+        if (supplier) setSelectedSupplierDetails(supplier);
+      }
+      
+      if (report.warehouseId) {
+        const warehouse = warehouses.find(w => w.id === report.warehouseId);
+        if (warehouse) setSelectedWarehouseDetails(warehouse);
+      }
     }
-  }, [report]);
+  }, [report, suppliers, warehouses]);
 
-  const handleChange = (e) => {
+  const handleInputChange = (e) => {
     const { name, value } = e.target;
     if (formData) {
       setFormData((prev) => ({ ...prev, [name]: value }));
+    }
+  };
+
+  const handleNumberChange = (name, value) => {
+    if (formData) {
+      setFormData((prev) => ({ ...prev, [name]: parseFloat(value) || 0 }));
     }
   };
 
@@ -424,230 +520,390 @@ function ReportEditor({ report, open, onOpenChange, onSave }) {
     if (formData) {
       setFormData((prev) => ({ ...prev, [name]: value }));
     }
+
+    if (name === "supplierId") {
+      const supplier = suppliers.find(s => s.id === value);
+      if (supplier) {
+        setFormData(prev => ({
+          ...prev,
+          supplierName: supplier.name,
+          supplierContact: supplier.contact || "",
+          supplierPhone: supplier.phone || "",
+          supplierEmail: supplier.email || "",
+        }));
+        setSelectedSupplierDetails(supplier);
+      }
+    }
+
+    if (name === "warehouseId") {
+      const warehouse = warehouses.find(w => w.id === value);
+      if (warehouse) {
+        setFormData(prev => ({
+          ...prev,
+          warehouseName: warehouse.name,
+          location: warehouse.location,
+        }));
+        setSelectedWarehouseDetails(warehouse);
+      }
+    }
+
+    if (name === "materialId") {
+      const material = rawMaterials.find(m => m.id === value);
+      if (material) {
+        setFormData(prev => ({
+          ...prev,
+          materialName: material.name,
+          materialId: material.id,
+          unit: material.unit || "kg",
+          costPerUnit: material.unitPrice?.toString() || "",
+          batchNumber: material.batchNumber || "",
+          supplierId: material.supplierId || "",
+          supplierName: material.supplierName || "",
+          warehouseId: material.warehouseId || "",
+          warehouseName: material.warehouseName || "",
+          location: material.location || "",
+        }));
+        
+        if (material.supplierId) {
+          const supplier = suppliers.find(s => s.id === material.supplierId);
+          if (supplier) setSelectedSupplierDetails(supplier);
+        }
+        if (material.warehouseId) {
+          const warehouse = warehouses.find(w => w.id === material.warehouseId);
+          if (warehouse) setSelectedWarehouseDetails(warehouse);
+        }
+      }
+    }
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!formData) return;
     
-    if (!formData.materialName || !formData.quantity || !formData.costPerUnit || !formData.supplier) {
+    if (!formData.materialName || !formData.quantity || !formData.costPerUnit) {
       toast.error("Please fill in all required fields");
       return;
     }
-    onSave(formData);
-    onOpenChange(false);
+
+    const user = auth.currentUser;
+    if (!user) {
+      toast.error("You must be logged in to update reports");
+      return;
+    }
+
+    try {
+      const reportRef = doc(db, "defectReports", user.uid, "reports", formData.id);
+      const totalLoss = (formData.quantity || 0) * (formData.costPerUnit || 0);
+      
+      const updatedData = {
+        ...formData,
+        totalLoss,
+        updatedAt: new Date().toISOString(),
+      };
+      delete updatedData.id;
+      
+      await updateDoc(reportRef, updatedData);
+      toast.success("Report updated successfully!");
+      onSave(formData);
+      onOpenChange(false);
+    } catch (err) {
+      console.error("Error updating report:", err);
+      toast.error("Failed to update report: " + err.message);
+    }
   };
 
-  // Don't render if no report or formData is null
   if (!report || !formData) return null;
+
+  const totalLoss = (formData.quantity || 0) * (formData.costPerUnit || 0);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-<DialogContent 
-  className=" w-[90vw] max-w-[90vw] sm:w-[85vw] sm:max-w-[85vw] md:w-[80vw] md:max-w-[80vw] lg:w-[75vw] lg:max-w-[75vw] xl:w-[70vw] xl:max-w-[70vw] h-[93vh] max-h-[93vh] p-6 gap-4 bg-background overflow-y-auto"
-  showCloseButton={true}
->          <DialogHeader>
-          <DialogTitle className="text-xl">Edit Defect Report</DialogTitle>
-          <DialogDescription className="text-sm">Update the details below.</DialogDescription>
+      <DialogContent 
+        className="w-[95vw] max-w-[95vw] sm:w-[90vw] sm:max-w-[90vw] md:w-[85vw] md:max-w-[85vw] lg:w-[80vw] lg:max-w-[80vw] xl:w-[75vw] xl:max-w-[75vw] max-h-[90vh] p-4 sm:p-6 gap-4 bg-background/95 backdrop-blur-md border-border/50 overflow-y-auto"
+        showCloseButton={true}
+      >
+        <DialogHeader>
+          <DialogTitle className="text-xl sm:text-2xl flex items-center gap-2">
+            <IconEdit className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
+            Edit Defect Report
+          </DialogTitle>
+          <DialogDescription>
+            Update the defect report details below.
+          </DialogDescription>
         </DialogHeader>
 
-        <div className="grid gap-4 py-4">
-          {/* Material Information */}
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label className="text-sm">Material Name *</Label>
-              <Input
-                name="materialName"
-                value={formData.materialName || ""}
-                onChange={handleChange}
-                className="h-9 text-sm"
-              />
+        <div className="space-y-4 sm:space-y-6 py-4">
+          {/* Material Selection */}
+          <div className="space-y-3">
+            <h3 className="text-sm font-semibold flex items-center gap-2 border-b pb-2">
+              <IconPackage className="h-4 w-4 text-primary" />
+              Material Information
+            </h3>
+            <div className="grid grid-cols-1 gap-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Select Material</label>
+                <Select value={formData.materialId || ""} onValueChange={(value) => handleSelectChange("materialId", value)}>
+                  <SelectTrigger className="h-11">
+                    <SelectValue placeholder="Select a material" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {rawMaterials.map((material) => (
+                      <SelectItem key={material.id} value={material.id}>
+                        <div className="flex flex-col">
+                          <span>{material.name}</span>
+                          <span className="text-xs text-muted-foreground">Batch: {material.batchNumber}</span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Material Name *</label>
+                  <Input
+                    name="materialName"
+                    value={formData.materialName || ""}
+                    onChange={handleInputChange}
+                    className="h-11"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Batch Number</label>
+                  <Input
+                    name="batchNumber"
+                    value={formData.batchNumber || ""}
+                    onChange={handleInputChange}
+                    className="h-11"
+                  />
+                </div>
+              </div>
             </div>
-            <div className="space-y-1.5">
-              <Label className="text-sm">Supplier *</Label>
-              <Input
-                name="supplier"
-                value={formData.supplier || ""}
-                onChange={handleChange}
-                className="h-9 text-sm"
-              />
+          </div>
+
+          {/* Supplier Selection */}
+          <div className="space-y-3">
+            <h3 className="text-sm font-semibold flex items-center gap-2 border-b pb-2">
+              <IconBuildingStore className="h-4 w-4 text-primary" />
+              Supplier Information
+            </h3>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Select Supplier</label>
+                <Select value={formData.supplierId || ""} onValueChange={(value) => handleSelectChange("supplierId", value)}>
+                  <SelectTrigger className="h-11">
+                    <SelectValue placeholder="Select a supplier" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {suppliers.map((supplier) => (
+                      <SelectItem key={supplier.id} value={supplier.id}>
+                        {supplier.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              {selectedSupplierDetails && (
+                <div className="bg-muted/30 p-3 rounded-lg space-y-1">
+                  <p className="text-xs text-muted-foreground">Contact: {selectedSupplierDetails.contact || "N/A"}</p>
+                  <p className="text-xs text-muted-foreground">Phone: {selectedSupplierDetails.phone || "N/A"}</p>
+                  <p className="text-xs text-muted-foreground">Email: {selectedSupplierDetails.email || "N/A"}</p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Warehouse Selection */}
+          <div className="space-y-3">
+            <h3 className="text-sm font-semibold flex items-center gap-2 border-b pb-2">
+              <IconBuildingWarehouse className="h-4 w-4 text-primary" />
+              Warehouse Location
+            </h3>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Select Warehouse</label>
+                <Select value={formData.warehouseId || ""} onValueChange={(value) => handleSelectChange("warehouseId", value)}>
+                  <SelectTrigger className="h-11">
+                    <SelectValue placeholder="Select a warehouse" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {warehouses.map((warehouse) => (
+                      <SelectItem key={warehouse.id} value={warehouse.id}>
+                        {warehouse.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              {selectedWarehouseDetails && (
+                <div className="bg-muted/30 p-3 rounded-lg space-y-1">
+                  <p className="text-xs text-muted-foreground">Location: {selectedWarehouseDetails.location || "N/A"}</p>
+                  <p className="text-xs text-muted-foreground">Manager: {selectedWarehouseDetails.manager || "N/A"}</p>
+                </div>
+              )}
             </div>
           </div>
 
           {/* Defect Details */}
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label className="text-sm">Defect Date</Label>
-              <Input
-                name="defectDate"
-                type="date"
-                value={formData.defectDate || ""}
-                onChange={handleChange}
-                className="h-9 text-sm"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-sm">Defect Type</Label>
-              <Input
-                name="defectType"
-                value={formData.defectType || ""}
-                onChange={handleChange}
-                className="h-9 text-sm"
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label className="text-sm">Defect Source</Label>
-              <Select
-                value={formData.defectSource}
-                onValueChange={(value) => handleSelectChange("defectSource", value)}
-              >
-                <SelectTrigger className="h-9 text-sm">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {defectSourceOptions.map((option) => (
-                    <SelectItem key={option.value} value={option.value} className="text-sm">
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-sm">risk_level</Label>
-              <Select
-                value={formData.risk_level}
-                onValueChange={(value) => handleSelectChange("risk_level", value)}
-              >
-                <SelectTrigger className="h-9 text-sm">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {risk_levelOptions.map((option) => (
-                    <SelectItem key={option.value} value={option.value} className="text-sm">
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+          <div className="space-y-3">
+            <h3 className="text-sm font-semibold flex items-center gap-2 border-b pb-2">
+              <IconBug className="h-4 w-4 text-primary" />
+              Defect Details
+            </h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Defect Date</label>
+                <Input
+                  name="defectDate"
+                  type="date"
+                  value={formData.defectDate || ""}
+                  onChange={handleInputChange}
+                  className="h-11"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Defect Type</label>
+                <Input
+                  name="defectType"
+                  value={formData.defectType || ""}
+                  onChange={handleInputChange}
+                  placeholder="e.g., Quality Issue"
+                  className="h-11"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Defect Source</label>
+                <Select value={formData.defectSource || "supplier"} onValueChange={(value) => handleSelectChange("defectSource", value)}>
+                  <SelectTrigger className="h-11">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {defectSourceOptions.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Risk Level</label>
+                <Select value={formData.risk_level || "Medium"} onValueChange={(value) => handleSelectChange("risk_level", value)}>
+                  <SelectTrigger className="h-11">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {risk_levelOptions.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        <span className={option.color}>{option.label}</span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </div>
 
           {/* Quantity and Cost */}
-          <div className="grid grid-cols-3 gap-3">
-            <div className="space-y-1.5">
-              <Label className="text-sm">Quantity *</Label>
-              <Input
-                name="quantity"
-                type="number"
-                step="0.01"
-                value={formData.quantity || ""}
-                onChange={handleChange}
-                className="h-9 text-sm"
-              />
+          <div className="space-y-3">
+            <h3 className="text-sm font-semibold flex items-center gap-2 border-b pb-2">
+              <IconCurrencyDollar className="h-4 w-4 text-primary" />
+              Quantity & Cost
+            </h3>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Quantity *</label>
+                <Input
+                  name="quantity"
+                  type="number"
+                  step="0.01"
+                  value={formData.quantity || ""}
+                  onChange={(e) => handleNumberChange("quantity", e.target.value)}
+                  className="h-11"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Unit</label>
+                <Input
+                  name="unit"
+                  value={formData.unit || "kg"}
+                  onChange={handleInputChange}
+                  className="h-11"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Cost/Unit *</label>
+                <Input
+                  name="costPerUnit"
+                  type="number"
+                  step="0.01"
+                  value={formData.costPerUnit || ""}
+                  onChange={(e) => handleNumberChange("costPerUnit", e.target.value)}
+                  className="h-11"
+                />
+              </div>
             </div>
-            <div className="space-y-1.5">
-              <Label className="text-sm">Unit</Label>
-              <Input
-                name="unit"
-                value={formData.unit || "kg"}
-                onChange={handleChange}
-                className="h-9 text-sm"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-sm">Cost/Unit *</Label>
-              <Input
-                name="costPerUnit"
-                type="number"
-                step="0.01"
-                value={formData.costPerUnit || ""}
-                onChange={handleChange}
-                className="h-9 text-sm"
-              />
-            </div>
-          </div>
-
-          {/* Location & Batch */}
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label className="text-sm">Location</Label>
-              <Input
-                name="location"
-                value={formData.location || ""}
-                onChange={handleChange}
-                className="h-9 text-sm"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-sm">Batch Number</Label>
-              <Input
-                name="batchNumber"
-                value={formData.batchNumber || ""}
-                onChange={handleChange}
-                className="h-9 text-sm"
-              />
+            <div className="p-3 bg-destructive/10 rounded-lg">
+              <p className="text-xs text-muted-foreground">Total Loss</p>
+              <p className="text-xl font-bold text-destructive">${totalLoss.toLocaleString()}</p>
             </div>
           </div>
 
           {/* Description */}
-          <div className="space-y-1.5">
-            <Label className="text-sm">Description</Label>
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Description</label>
             <Textarea
               name="description"
               value={formData.description || ""}
-              onChange={handleChange}
-              className="text-sm"
-              rows={2}
+              onChange={handleInputChange}
+              rows={3}
+              className="resize-none"
             />
           </div>
 
-          {/* Status */}
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label className="text-sm">Status</Label>
-              <Select
-                value={formData.status}
-                onValueChange={(value) => handleSelectChange("status", value)}
-              >
-                <SelectTrigger className="h-9 text-sm">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {statusOptions.map((option) => (
-                    <SelectItem key={option.value} value={option.value} className="text-sm">
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+          {/* Status & Action */}
+          <div className="space-y-3">
+            <h3 className="text-sm font-semibold flex items-center gap-2 border-b pb-2">
+              <IconClock className="h-4 w-4 text-primary" />
+              Status & Action
+            </h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Status</label>
+                <Select value={formData.status || "Reported to Supplier"} onValueChange={(value) => handleSelectChange("status", value)}>
+                  <SelectTrigger className="h-11">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {statusOptions.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Reported By</label>
+                <Input
+                  name="reportedBy"
+                  value={formData.reportedBy || ""}
+                  onChange={handleInputChange}
+                  className="h-11"
+                />
+              </div>
             </div>
-            <div className="space-y-1.5">
-              <Label className="text-sm">Reported By</Label>
-              <Input
-                name="reportedBy"
-                value={formData.reportedBy || ""}
-                onChange={handleChange}
-                className="h-9 text-sm"
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Action Taken</label>
+              <Textarea
+                name="actionTaken"
+                value={formData.actionTaken || ""}
+                onChange={handleInputChange}
+                rows={2}
+                placeholder="What action has been taken?"
+                className="resize-none"
               />
             </div>
           </div>
-
-          {/* Action Taken */}
-          <div className="space-y-1.5">
-            <Label className="text-sm">Action Taken</Label>
-            <Textarea
-              name="actionTaken"
-              value={formData.actionTaken || ""}
-              onChange={handleChange}
-              className="text-sm"
-              rows={2}
-            />
-          </div>
-
-          
         </div>
 
         <DialogFooter className="gap-2">
@@ -656,7 +912,7 @@ function ReportEditor({ report, open, onOpenChange, onSave }) {
           </Button>
           <Button onClick={handleSubmit}>
             <IconEdit className="mr-2 h-4 w-4" />
-            Update
+            Update Report
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -789,18 +1045,29 @@ export function DefectReportTable({
         size: isMobile ? 160 : 200,
       },
       {
+        accessorKey: "supplierName",
+        header: "Supplier",
+        cell: ({ row }) => (
+          <div className="text-sm flex items-center gap-1">
+            <IconBuildingStore className="h-3.5 w-3.5 text-muted-foreground shrink-0 hidden sm:inline" />
+            <span className="truncate max-w-[120px]">{row.original.supplierName || row.original.supplier || "N/A"}</span>
+          </div>
+        ),
+        size: isMobile ? 130 : 160,
+      },
+      {
         accessorKey: "defectType",
         header: "Type",
         cell: ({ row }) => (
-          <div className="text-sm text-muted-foreground truncate max-w-[120px]">
-            {row.original.defectType}
+          <div className="text-sm text-muted-foreground truncate max-w-[100px]">
+            {row.original.defectType || "N/A"}
           </div>
         ),
-        size: 120,
+        size: 100,
       },
       {
         accessorKey: "risk_level",
-        header: "risk_level",
+        header: "Risk",
         cell: ({ row }) => {
           const risk_level = row.original.risk_level;
           let colorClass = "";
@@ -823,7 +1090,7 @@ export function DefectReportTable({
             </Badge>
           );
         },
-        size: 80,
+        size: 70,
       },
       {
         accessorKey: "defectSource",
@@ -832,7 +1099,7 @@ export function DefectReportTable({
           const source = row.original.defectSource;
           return (
             <Badge
-              variant={source === "supplier" ? "outline" : "destructive"}
+              variant="outline"
               className="flex items-center gap-1 text-[11px] px-1.5 py-0"
             >
               {source === "supplier" ? (
@@ -863,24 +1130,16 @@ export function DefectReportTable({
       {
         accessorKey: "totalLoss",
         header: "Loss",
-        cell: ({ row }) => (
-          <div className="text-sm font-medium text-destructive flex items-center gap-1 whitespace-nowrap">
-            <IconCurrencyDollar className="h-3.5 w-3.5 shrink-0" />
-            <span>${row.original.totalLoss.toLocaleString()}</span>
-          </div>
-        ),
+        cell: ({ row }) => {
+          const totalLoss = (row.original.quantity || 0) * (row.original.costPerUnit || 0);
+          return (
+            <div className="text-sm font-medium text-destructive flex items-center gap-1 whitespace-nowrap">
+              <IconCurrencyDollar className="h-3.5 w-3.5 shrink-0" />
+              <span>${totalLoss.toLocaleString()}</span>
+            </div>
+          );
+        },
         size: 110,
-      },
-      {
-        accessorKey: "supplier",
-        header: "Supplier",
-        cell: ({ row }) => (
-          <div className="text-sm flex items-center gap-1">
-            <IconBuildingStore className="h-3.5 w-3.5 text-muted-foreground shrink-0 hidden sm:inline" />
-            <span className="truncate max-w-[120px] md:max-w-[150px]">{row.original.supplier}</span>
-          </div>
-        ),
-        size: isMobile ? 130 : 160,
       },
       {
         accessorKey: "defectDate",
@@ -892,17 +1151,6 @@ export function DefectReportTable({
           </div>
         ),
         size: 100,
-      },
-      {
-        accessorKey: "reportedBy",
-        header: "Reported",
-        cell: ({ row }) => (
-          <div className="text-sm flex items-center gap-1">
-            <IconUser className="h-3.5 w-3.5 text-muted-foreground shrink-0 hidden sm:inline" />
-            <span className="truncate max-w-[100px] md:max-w-[120px]">{row.original.reportedBy}</span>
-          </div>
-        ),
-        size: isMobile ? 110 : 130,
       },
       {
         id: "actions",
@@ -982,7 +1230,7 @@ export function DefectReportTable({
 
   return (
     <>
-      <div className="overflow-x-auto rounded-lg border">
+      <div className="overflow-x-auto rounded-lg border border-border/50 bg-background/40 backdrop-blur-sm">
         <div className="min-w-[1050px] md:min-w-full">
           <DndContext
             collisionDetection={closestCenter}
@@ -992,7 +1240,7 @@ export function DefectReportTable({
             id={sortableId}
           >
             <Table>
-              <TableHeader className="bg-muted sticky top-0 z-10">
+              <TableHeader className="bg-muted/50 sticky top-0 z-10 backdrop-blur-sm">
                 {table.getHeaderGroups().map((headerGroup) => (
                   <TableRow key={headerGroup.id}>
                     {headerGroup.headers.map((header) => (
@@ -1099,7 +1347,7 @@ export function DefectReportTable({
         </div>
       </div>
 
-      {/* Beautiful View Dialog - Wider with Blur */}
+      {/* View Dialog */}
       <ReportViewerDialog
         report={viewingReport}
         open={viewDialogOpen}

@@ -6,9 +6,10 @@ import { usePathname } from "next/navigation"
 import { 
   IconCirclePlusFilled, 
   IconChevronRight,
-  IconStack2,      // Raw Materials
-  IconBox,         // Products
-  IconPackageExport  // Finished Products
+  IconStack2,      
+  IconBox,         
+  IconPackageExport ,
+  IconBolt 
 } from "@tabler/icons-react";
 
 import {
@@ -30,6 +31,13 @@ import { cn } from "@/lib/utils"
 
 export function NavMain() {
   const pathname = usePathname()
+  
+  // State to track which section is open (only one at a time)
+  const [openSection, setOpenSection] = React.useState("raw-materials")
+
+  const handleSectionToggle = (section) => {
+    setOpenSection(prev => prev === section ? null : section)
+  }
 
   return (
     <SidebarGroup>
@@ -52,7 +60,8 @@ export function NavMain() {
           {/* 1. Raw Materials - Collapsible */}
           <Collapsible
             asChild
-            defaultOpen={true}
+            open={openSection === "raw-materials"}
+            onOpenChange={() => handleSectionToggle("raw-materials")}
             className="group/collapsible"
           >
             <SidebarMenuItem>
@@ -63,7 +72,10 @@ export function NavMain() {
                 >
                   <IconStack2 size={18} stroke={1.5} />
                   <span className="font-medium">Raw Materials</span>
-                  <IconChevronRight className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90 text-zinc-500" />
+                  <IconChevronRight className={cn(
+                    "ml-auto transition-transform duration-200 text-zinc-500",
+                    openSection === "raw-materials" && "rotate-90"
+                  )} />
                 </SidebarMenuButton>
               </CollapsibleTrigger>
               <CollapsibleContent>
@@ -109,6 +121,8 @@ export function NavMain() {
           {/* 2. Finished Products - Collapsible */}
           <Collapsible
             asChild
+            open={openSection === "finished-products"}
+            onOpenChange={() => handleSectionToggle("finished-products")}
             className="group/collapsible"
           >
             <SidebarMenuItem>
@@ -119,7 +133,10 @@ export function NavMain() {
                 >
                   <IconPackageExport size={18} stroke={1.5} />
                   <span className="font-medium">Finished Products</span>
-                  <IconChevronRight className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90 text-zinc-500" />
+                  <IconChevronRight className={cn(
+                    "ml-auto transition-transform duration-200 text-zinc-500",
+                    openSection === "finished-products" && "rotate-90"
+                  )} />
                 </SidebarMenuButton>
               </CollapsibleTrigger>
               <CollapsibleContent>
@@ -170,18 +187,19 @@ export function NavMain() {
               isActive={pathname === "/products"}
               className="cursor-pointer hover:backdrop-blur-sm hover:bg-white/10 transition-all duration-200"
             >
-              <Link href="/products">
-                <IconBox size={18} stroke={1.5} />
+              <Link href="/energy-consuption" className="flex items-center gap-2">
+                <IconBolt size={18} stroke={1.5} />
                 <span className={cn(
                   "font-medium",
-                  pathname === "/products" ? "text-purple-400" : ""
+                  pathname === "/energy-consuption" ? "text-purple-400" : ""
                 )}>
-                  Products & Catalog
+                  Energy Consuption
                 </span>
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
-
+            
+            
         </SidebarMenu>
       </SidebarGroupContent>
     </SidebarGroup>

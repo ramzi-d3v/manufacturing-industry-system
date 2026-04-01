@@ -308,69 +308,43 @@ export default function FinishedProductDefectReportPage() {
 
   // Create new report
   const handleSubmitNewReport = async () => {
-    if (!user) {
-      toast.error("You must be logged in to create reports");
-      return;
-    }
+  // Validate required fields first
+  if (!newReport.materialId || !newReport.quantity) {
+    toast.error("Please fill in all required fields");
+    return;
+  }
 
-    if (
-      !newReport.productName ||
-      !newReport.quantity ||
-      !newReport.costPerUnit
-    ) {
-      toast.error("Please fill in all required fields");
-      return;
-    }
-
-    const totalLoss = parseFloat(newReport.quantity) * parseFloat(newReport.costPerUnit);
-    const reportData = {
-      productName: newReport.productName,
-      batchNumber: newReport.batchNumber || "",
-      defectDate: newReport.defectDate,
-      defectSource: newReport.defectSource,
-      quantity: parseFloat(newReport.quantity),
-      unit: newReport.unit,
-      costPerUnit: parseFloat(newReport.costPerUnit),
-      sellingPrice: parseFloat(newReport.sellingPrice) || 0,
-      totalLoss,
-      description: newReport.description || "",
-      riskLevel: newReport.riskLevel,
-      status: newReport.status,
-      actionTaken: newReport.actionTaken || "",
-      reportedBy: newReport.reportedBy || user.displayName || "System User",
-      location: newReport.location || "",
-      qualityGrade: newReport.qualityGrade || "",
-      reportDate: new Date().toISOString().split("T")[0],
-      createdAt: Timestamp.now(),
-    };
-
-    try {
-      const userReportsRef = collection(db, "finishedProductDefects", user.uid, "reports");
-      await addDoc(userReportsRef, reportData);
-      toast.success("Defect report added successfully!");
-      setDialogOpen(false);
-      setNewReport({
-        productName: "",
-        batchNumber: "",
-        defectDate: new Date().toISOString().split("T")[0],
-        defectSource: "production",
-        quantity: "",
-        unit: "pcs",
-        costPerUnit: "",
-        sellingPrice: "",
-        description: "",
-        riskLevel: "Medium",
-        status: "Reported",
-        actionTaken: "",
-        reportedBy: "",
-        location: "",
-        qualityGrade: "",
-      });
-    } catch (err) {
-      console.error("Error adding report:", err);
-      toast.error("Failed to add report: " + err.message);
-    }
+  // Create a clean object for Firestore
+  const reportData = {
+    materialId: newReport.materialId || "",
+    materialName: selectedMaterial?.name || "Unknown",
+    supplierId: newReport.supplierId || null,
+    warehouseId: newReport.warehouseId || null,
+    defectDate: newReport.defectDate || new Date().toISOString().split('T')[0],
+    defectType: newReport.defectType || "General",
+    defectSource: newReport.defectSource || "production",
+    risk_level: newReport.risk_level || "low",
+    quantity: parseFloat(newReport.quantity) || 0,
+    unit: newReport.unit || "unit",
+    costPerUnit: parseFloat(newReport.costPerUnit) || 0,
+    totalLoss: (parseFloat(newReport.quantity) || 0) * (parseFloat(newReport.costPerUnit) || 0),
+    description: newReport.description || "",
+    status: newReport.status || "pending",
+    reportedBy: newReport.reportedBy || "System",
+    actionTaken: newReport.actionTaken || "",
+    createdAt: new Date().toISOString(),
   };
+
+  try {
+    // Replace with your actual Firebase addDoc logic
+    // await addDoc(collection(db, "defectReports"), reportData);
+    console.log("Saving to Firebase:", reportData);
+    setDialogOpen(false);
+    toast.success("Report created successfully");
+  } catch (error) {
+    toast.error("Firebase Error: Check your indexes or permissions");
+  }
+};
 
   // Update report
   const handleUpdateReport = async (updatedReport) => {

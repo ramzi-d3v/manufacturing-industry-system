@@ -1,3 +1,4 @@
+// components/finished-product-table.jsx
 "use client";
 
 import * as React from "react";
@@ -200,75 +201,81 @@ function ProductViewerDialog({ product, open, onOpenChange, onEdit, onDelete }) 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent 
-        className="w-[90vw] max-w-[90vw] sm:w-[85vw] sm:max-w-[85vw] md:w-[80vw] md:max-w-[80vw] lg:w-[75vw] lg:max-w-[75vw] xl:w-[70vw] xl:max-w-[70vw] p-6 gap-4 bg-background/80 backdrop-blur-sm border-border/50 max-h-[90vh] overflow-y-auto"
+        className="w-[95vw] max-w-[95vw] sm:w-[90vw] sm:max-w-[90vw] md:w-[85vw] md:max-w-[85vw] lg:w-[80vw] lg:max-w-[80vw] xl:w-[70vw] xl:max-w-[70vw] max-h-[90vh] p-4 sm:p-6 gap-4 bg-background/95 backdrop-blur-md border-border/50 overflow-y-auto"
         showCloseButton={true}
       >
         <DialogHeader>
-          <DialogTitle className="text-2xl flex items-center gap-2">
-            <IconPackage className="h-6 w-6 text-primary" />
+          <DialogTitle className="text-xl sm:text-2xl flex items-center gap-2">
+            <IconPackage className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
             Product Details
           </DialogTitle>
-          <DialogDescription className="flex items-center gap-2 text-xs">
-            <IconBarcode className="h-3 w-3" />
-            Batch: {product.batchNumber || "N/A"}
+          <DialogDescription className="flex flex-wrap items-center gap-2 text-xs">
+            <span className="flex items-center gap-1">
+              <IconBarcode className="h-3 w-3" />
+              Batch: {product.batchNumber || "N/A"}
+            </span>
             {product.productionDate && (
               <>
                 <span>•</span>
-                <IconCalendar className="h-3 w-3" />
-                <span>Prod: {formatDate(product.productionDate)}</span>
+                <span className="flex items-center gap-1">
+                  <IconCalendar className="h-3 w-3" />
+                  Prod: {formatDate(product.productionDate)}
+                </span>
               </>
             )}
             {product.expiryDate && !product.noExpiry && (
               <>
                 <span>•</span>
-                <IconCalendar className="h-3 w-3" />
-                <span>Exp: {formatDate(product.expiryDate)}</span>
+                <span className="flex items-center gap-1">
+                  <IconCalendar className="h-3 w-3" />
+                  Exp: {formatDate(product.expiryDate)}
+                </span>
               </>
             )}
           </DialogDescription>
         </DialogHeader>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
           {/* Basic Information */}
           <div className="space-y-4">
-            <div className="p-4 bg-background/40 backdrop-blur-sm rounded-lg border border-border/50">
-              <div className="flex items-center justify-between flex-wrap gap-2 mb-3">
-                <Badge className={cn(qualityConfig.bg, qualityConfig.color)}>
+            <div className="p-3 sm:p-4 bg-primary/5 rounded-lg border border-primary/10">
+              <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+                <Badge className={cn("text-[10px] sm:text-xs", qualityConfig.bg, qualityConfig.color)}>
                   <QualityIcon className="h-3 w-3 mr-1" />
                   {qualityConfig.label}
                 </Badge>
-                <Badge className={cn(testingConfig.bg, testingConfig.color)}>
+                <Badge className={cn("text-[10px] sm:text-xs", testingConfig.bg, testingConfig.color)}>
                   <TestingIcon className="h-3 w-3 mr-1" />
                   {testingConfig.label}
                 </Badge>
-                <Badge className={cn(stockStatus.bg, stockStatus.color)}>
+                <Badge className={cn("text-[10px] sm:text-xs", stockStatus.bg, stockStatus.color)}>
                   <StockIcon className="h-3 w-3 mr-1" />
                   {stockStatus.label}
                 </Badge>
                 {expired && !product.noExpiry && (
-                  <Badge className="bg-red-500/10 text-red-500">
+                  <Badge className="bg-red-500/10 text-red-500 text-[10px] sm:text-xs">
                     <IconAlertCircle className="h-3 w-3 mr-1" />
                     Expired
                   </Badge>
                 )}
                 {nearExpiry && !expired && !product.noExpiry && (
-                  <Badge className="bg-orange-500/10 text-orange-500">
+                  <Badge className="bg-orange-500/10 text-orange-500 text-[10px] sm:text-xs">
                     <IconAlertCircle className="h-3 w-3 mr-1" />
                     Expiring Soon
                   </Badge>
                 )}
               </div>
-              <h3 className="font-semibold text-lg mt-2">{product.name}</h3>
-              <p className="text-sm text-muted-foreground">{product.category}</p>
+              <h3 className="font-semibold text-base sm:text-lg mt-2">{product.name}</h3>
+              <p className="text-xs sm:text-sm text-muted-foreground">{product.category}</p>
             </div>
 
             {product.description && (
-              <div className="p-3 bg-background/40 backdrop-blur-sm rounded-lg border border-border/50">
-                <h4 className="text-sm font-medium mb-2 flex items-center gap-2">
-                  <IconPackage className="h-4 w-4" />
+              <div className="p-3 bg-muted/30 rounded-lg">
+                <h4 className="text-xs font-medium mb-2 flex items-center gap-2">
+                  <IconPackage className="h-3.5 w-3.5" />
                   Description
                 </h4>
-                <p className="text-sm text-muted-foreground">{product.description}</p>
+                <p className="text-xs sm:text-sm text-muted-foreground">{product.description}</p>
               </div>
             )}
           </div>
@@ -276,30 +283,30 @@ function ProductViewerDialog({ product, open, onOpenChange, onEdit, onDelete }) 
           {/* Stock and Pricing */}
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-3">
-              <div className="p-3 bg-background/40 backdrop-blur-sm rounded-lg border border-border/50">
-                <p className="text-xs text-muted-foreground">Quantity</p>
-                <p className="text-xl font-semibold">
-                  {product.quantity} <span className="text-sm font-normal text-muted-foreground">{product.unit}</span>
+              <div className="p-3 bg-muted/30 rounded-lg">
+                <p className="text-[10px] text-muted-foreground">Quantity</p>
+                <p className="text-lg sm:text-xl font-semibold">
+                  {product.quantity} <span className="text-xs font-normal text-muted-foreground">{product.unit}</span>
                 </p>
               </div>
-              <div className="p-3 bg-background/40 backdrop-blur-sm rounded-lg border border-border/50">
-                <p className="text-xs text-muted-foreground">Selling Price</p>
-                <p className="text-xl font-semibold">
+              <div className="p-3 bg-muted/30 rounded-lg">
+                <p className="text-[10px] text-muted-foreground">Selling Price</p>
+                <p className="text-lg sm:text-xl font-semibold">
                   ${product.sellingPrice?.toLocaleString()}
                 </p>
-                <p className="text-[10px] text-muted-foreground mt-1">
+                <p className="text-[9px] sm:text-[10px] text-muted-foreground mt-1">
                   per {product.unit}
                 </p>
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
-              <div className="p-3 bg-background/40 backdrop-blur-sm rounded-lg border border-border/50">
-                <p className="text-xs text-muted-foreground">Cost Price</p>
+              <div className="p-3 bg-muted/30 rounded-lg">
+                <p className="text-[10px] text-muted-foreground">Cost Price</p>
                 <p className="text-sm font-medium">${product.costPrice?.toLocaleString() || "N/A"}</p>
               </div>
-              <div className="p-3 bg-background/40 backdrop-blur-sm rounded-lg border border-border/50">
-                <p className="text-xs text-muted-foreground">Profit Margin</p>
+              <div className="p-3 bg-muted/30 rounded-lg">
+                <p className="text-[10px] text-muted-foreground">Profit Margin</p>
                 <p className="text-sm font-medium">
                   {product.costPrice && product.sellingPrice 
                     ? `${Math.round(((product.sellingPrice - product.costPrice) / product.sellingPrice) * 100)}%`
@@ -308,28 +315,28 @@ function ProductViewerDialog({ product, open, onOpenChange, onEdit, onDelete }) 
               </div>
             </div>
 
-            <div className="p-3 bg-primary/10 backdrop-blur-sm rounded-lg border border-primary/20">
-              <p className="text-xs text-muted-foreground">Total Inventory Value</p>
-              <p className="text-lg font-bold text-primary">
+            <div className="p-3 bg-primary/10 rounded-lg border border-primary/20">
+              <p className="text-[10px] text-muted-foreground">Total Inventory Value</p>
+              <p className="text-base sm:text-lg font-bold text-primary">
                 ${((product.quantity || 0) * (product.sellingPrice || 0)).toLocaleString()}
               </p>
             </div>
 
             {product.productionDate && (
-              <div className="p-3 bg-background/40 backdrop-blur-sm rounded-lg border border-border/50">
-                <p className="text-xs text-muted-foreground">Production Date</p>
+              <div className="p-3 bg-muted/30 rounded-lg">
+                <p className="text-[10px] text-muted-foreground">Production Date</p>
                 <p className="text-sm font-medium">{formatDate(product.productionDate)}</p>
               </div>
             )}
 
             {product.expiryDate && !product.noExpiry && (
               <div className={cn(
-                "p-3 rounded-lg border",
+                "p-3 rounded-lg",
                 expired ? "bg-red-500/10 border-red-500/20" : 
                 nearExpiry ? "bg-orange-500/10 border-orange-500/20" : 
-                "bg-background/40 backdrop-blur-sm border-border/50"
+                "bg-muted/30"
               )}>
-                <p className="text-xs text-muted-foreground">Expiry Date</p>
+                <p className="text-[10px] text-muted-foreground">Expiry Date</p>
                 <p className={cn(
                   "text-sm font-medium",
                   expired ? "text-red-500" : nearExpiry ? "text-orange-500" : ""
@@ -344,7 +351,7 @@ function ProductViewerDialog({ product, open, onOpenChange, onEdit, onDelete }) 
         </div>
 
         <DialogFooter className="gap-2 mt-4">
-          <Button variant="outline" onClick={() => onOpenChange(false)} className="bg-background/80 backdrop-blur-sm">
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
             Close
           </Button>
           <Button
@@ -353,7 +360,6 @@ function ProductViewerDialog({ product, open, onOpenChange, onEdit, onDelete }) 
               onOpenChange(false);
               onEdit(product);
             }}
-            className="bg-background/80 backdrop-blur-sm"
           >
             <IconEdit className="mr-2 h-4 w-4" />
             Edit
@@ -403,6 +409,15 @@ function ProductEditor({ product, open, onOpenChange, onSave, categories }) {
     }
   };
 
+  const handleCheckboxChange = (checked) => {
+    if (formData) {
+      setFormData((prev) => ({ ...prev, noExpiry: checked }));
+      if (checked) {
+        setFormData((prev) => ({ ...prev, expiryDate: null }));
+      }
+    }
+  };
+
   const handleSubmit = () => {
     if (!formData) return;
     
@@ -434,197 +449,221 @@ function ProductEditor({ product, open, onOpenChange, onSave, categories }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent 
-        className="w-[90vw] max-w-[90vw] sm:w-[85vw] sm:max-w-[85vw] md:w-[80vw] md:max-w-[80vw] lg:w-[75vw] lg:max-w-[75vw] xl:w-[70vw] xl:max-w-[70vw] h-[93vh] max-h-[93vh] p-6 gap-4 bg-background/80 backdrop-blur-sm border-border/50 overflow-y-auto"
+        className="w-[95vw] max-w-[95vw] sm:w-[90vw] sm:max-w-[90vw] md:w-[85vw] md:max-w-[85vw] lg:w-[80vw] lg:max-w-[80vw] xl:w-[75vw] xl:max-w-[75vw] h-[90vh] max-h-[90vh] p-4 sm:p-6 gap-4 bg-background/95 backdrop-blur-md border-border/50 overflow-y-auto"
         showCloseButton={true}
       >
         <DialogHeader>
-          <DialogTitle className="text-xl flex items-center gap-2">
-            <IconEdit className="h-5 w-5" />
+          <DialogTitle className="text-xl sm:text-2xl flex items-center gap-2">
+            <IconEdit className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
             Edit Finished Product
           </DialogTitle>
           <DialogDescription>Update the product details below.</DialogDescription>
         </DialogHeader>
 
-        <div className="grid gap-4 py-4">
+        <div className="space-y-4 sm:space-y-6 py-4">
           {/* Basic Information */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>Product Name *</Label>
-              <Input
-                name="name"
-                value={formData.name || ""}
-                onChange={handleChange}
-                className="bg-background/40 backdrop-blur-sm"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Batch Number</Label>
-              <Input
-                name="batchNumber"
-                value={formData.batchNumber || ""}
-                onChange={handleChange}
-                placeholder="e.g., BATCH-2024-001"
-                className="bg-background/40 backdrop-blur-sm"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Category *</Label>
-              <Select
-                value={formData.category || ""}
-                onValueChange={(value) => handleSelectChange("category", value)}
-              >
-                <SelectTrigger className="bg-background/40 backdrop-blur-sm">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {categories.map((cat) => (
-                    <SelectItem key={cat.id || cat} value={cat.name || cat}>
-                      {cat.name || cat}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>Unit</Label>
-              <Input
-                name="unit"
-                value={formData.unit || "pcs"}
-                onChange={handleChange}
-                className="bg-background/40 backdrop-blur-sm"
-              />
+          <div className="space-y-3">
+            <h3 className="text-sm font-semibold flex items-center gap-2 border-b pb-2">
+              <IconPackage className="h-4 w-4 text-primary" />
+              Basic Information
+            </h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label className="text-sm">Product Name *</Label>
+                <Input
+                  name="name"
+                  value={formData.name || ""}
+                  onChange={handleChange}
+                  className="h-11 bg-background/50"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-sm">Batch Number</Label>
+                <Input
+                  name="batchNumber"
+                  value={formData.batchNumber || ""}
+                  onChange={handleChange}
+                  placeholder="e.g., BATCH-2024-001"
+                  className="h-11 bg-background/50"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-sm">Category *</Label>
+                <Select
+                  value={formData.category || ""}
+                  onValueChange={(value) => handleSelectChange("category", value)}
+                >
+                  <SelectTrigger className="h-11 bg-background/50">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {categories.map((cat) => (
+                      <SelectItem key={cat.id || cat} value={cat.name || cat}>
+                        {cat.name || cat}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-sm">Unit</Label>
+                <Input
+                  name="unit"
+                  value={formData.unit || "pcs"}
+                  onChange={handleChange}
+                  className="h-11 bg-background/50"
+                />
+              </div>
             </div>
           </div>
 
           {/* Quantity and Pricing */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="space-y-2">
-              <Label>Quantity</Label>
-              <Input
-                name="quantity"
-                type="number"
-                step="0.01"
-                value={formData.quantity || 0}
-                onChange={(e) => handleNumberChange("quantity", e.target.value)}
-                className="bg-background/40 backdrop-blur-sm"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Cost Price (USD)</Label>
-              <Input
-                name="costPrice"
-                type="number"
-                step="0.01"
-                value={formData.costPrice || 0}
-                onChange={(e) => handleNumberChange("costPrice", e.target.value)}
-                className="bg-background/40 backdrop-blur-sm"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Selling Price (USD)</Label>
-              <Input
-                name="sellingPrice"
-                type="number"
-                step="0.01"
-                value={formData.sellingPrice || 0}
-                onChange={(e) => handleNumberChange("sellingPrice", e.target.value)}
-                className="bg-background/40 backdrop-blur-sm"
-              />
+          <div className="space-y-3">
+            <h3 className="text-sm font-semibold flex items-center gap-2 border-b pb-2">
+              <IconCurrencyDollar className="h-4 w-4 text-primary" />
+              Quantity & Pricing
+            </h3>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <Label className="text-sm">Quantity</Label>
+                <Input
+                  name="quantity"
+                  type="number"
+                  step="0.01"
+                  value={formData.quantity || 0}
+                  onChange={(e) => handleNumberChange("quantity", e.target.value)}
+                  className="h-11 bg-background/50"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-sm">Cost Price (USD)</Label>
+                <Input
+                  name="costPrice"
+                  type="number"
+                  step="0.01"
+                  value={formData.costPrice || 0}
+                  onChange={(e) => handleNumberChange("costPrice", e.target.value)}
+                  className="h-11 bg-background/50"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-sm">Selling Price (USD)</Label>
+                <Input
+                  name="sellingPrice"
+                  type="number"
+                  step="0.01"
+                  value={formData.sellingPrice || 0}
+                  onChange={(e) => handleNumberChange("sellingPrice", e.target.value)}
+                  className="h-11 bg-background/50"
+                />
+              </div>
             </div>
           </div>
 
           {/* Quality Grade and Testing Status */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>Quality Grade</Label>
-              <Select
-                value={formData.qualityGrade || "standard"}
-                onValueChange={(value) => handleSelectChange("qualityGrade", value)}
-              >
-                <SelectTrigger className="bg-background/40 backdrop-blur-sm">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {qualityGradeOptions.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>Testing Status</Label>
-              <Select
-                value={formData.testingStatus || "not_tested"}
-                onValueChange={(value) => handleSelectChange("testingStatus", value)}
-              >
-                <SelectTrigger className="bg-background/40 backdrop-blur-sm">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {testingStatusOptions.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+          <div className="space-y-3">
+            <h3 className="text-sm font-semibold flex items-center gap-2 border-b pb-2">
+              <IconAward className="h-4 w-4 text-primary" />
+              Quality & Testing
+            </h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label className="text-sm">Quality Grade</Label>
+                <Select
+                  value={formData.qualityGrade || "standard"}
+                  onValueChange={(value) => handleSelectChange("qualityGrade", value)}
+                >
+                  <SelectTrigger className="h-11 bg-background/50">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {qualityGradeOptions.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-sm">Testing Status</Label>
+                <Select
+                  value={formData.testingStatus || "not_tested"}
+                  onValueChange={(value) => handleSelectChange("testingStatus", value)}
+                >
+                  <SelectTrigger className="h-11 bg-background/50">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {testingStatusOptions.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </div>
 
           {/* Production and Expiry Dates */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>Production Date</Label>
-              <Input
-                name="productionDate"
-                type="date"
-                value={formData.productionDate || ""}
-                onChange={handleChange}
-                className="bg-background/40 backdrop-blur-sm"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Expiry Date</Label>
-              <Input
-                name="expiryDate"
-                type="date"
-                value={formData.expiryDate || ""}
-                onChange={handleChange}
-                className="bg-background/40 backdrop-blur-sm"
-                disabled={formData.noExpiry}
-              />
-              <div className="flex items-center space-x-2">
-                <input
-                  type="checkbox"
-                  id="noExpiry"
-                  checked={formData.noExpiry || false}
-                  onChange={(e) => handleSelectChange("noExpiry", e.target.checked)}
-                  className="rounded border-border"
+          <div className="space-y-3">
+            <h3 className="text-sm font-semibold flex items-center gap-2 border-b pb-2">
+              <IconCalendar className="h-4 w-4 text-primary" />
+              Dates
+            </h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label className="text-sm">Production Date</Label>
+                <Input
+                  name="productionDate"
+                  type="date"
+                  value={formData.productionDate || ""}
+                  onChange={handleChange}
+                  className="h-11 bg-background/50"
                 />
-                <Label htmlFor="noExpiry" className="text-xs cursor-pointer text-muted-foreground">
-                  This product doesn't expire
-                </Label>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-sm">Expiry Date</Label>
+                <Input
+                  name="expiryDate"
+                  type="date"
+                  value={formData.expiryDate || ""}
+                  onChange={handleChange}
+                  className="h-11 bg-background/50"
+                  disabled={formData.noExpiry}
+                />
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    id="noExpiry"
+                    checked={formData.noExpiry || false}
+                    onChange={(e) => handleCheckboxChange(e.target.checked)}
+                    className="rounded border-border"
+                  />
+                  <Label htmlFor="noExpiry" className="text-xs cursor-pointer text-muted-foreground">
+                    This product doesn't expire
+                  </Label>
+                </div>
               </div>
             </div>
           </div>
 
           {/* Description */}
           <div className="space-y-2">
-            <Label>Description</Label>
+            <Label className="text-sm">Description</Label>
             <Textarea
               name="description"
               value={formData.description || ""}
               onChange={handleChange}
               rows={3}
-              className="bg-background/40 backdrop-blur-sm"
+              className="bg-background/50 resize-none"
             />
           </div>
         </div>
 
         <DialogFooter className="gap-2">
-          <Button variant="outline" onClick={() => onOpenChange(false)} className="bg-background/80 backdrop-blur-sm">
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
           <Button onClick={handleSubmit}>
@@ -943,7 +982,7 @@ export function FinishedProductTable({
 
   return (
     <>
-      <div className="overflow-x-auto rounded-lg border border-border/50">
+      <div className="overflow-x-auto rounded-lg border border-border/50 bg-background/40 backdrop-blur-sm">
         <div className="min-w-[1050px] md:min-w-full">
           <DndContext
             collisionDetection={closestCenter}
@@ -953,7 +992,7 @@ export function FinishedProductTable({
             id={sortableId}
           >
             <Table>
-              <TableHeader className="bg-background/40 backdrop-blur-sm sticky top-0 z-10">
+              <TableHeader className="bg-muted/50 sticky top-0 z-10 backdrop-blur-sm">
                 {table.getHeaderGroups().map((headerGroup) => (
                   <TableRow key={headerGroup.id}>
                     {headerGroup.headers.map((header) => (
@@ -1008,7 +1047,7 @@ export function FinishedProductTable({
                 table.setPageSize(Number(value));
               }}
             >
-              <SelectTrigger className="h-7 w-16 text-sm bg-background/40 backdrop-blur-sm" id="rows-per-page">
+              <SelectTrigger className="h-7 w-16 text-sm bg-background/40 backdrop-blur-sm border-border/50" id="rows-per-page">
                 <SelectValue placeholder={table.getState().pagination.pageSize} />
               </SelectTrigger>
               <SelectContent>
@@ -1026,7 +1065,7 @@ export function FinishedProductTable({
           <div className="flex items-center gap-1">
             <Button
               variant="outline"
-              className="h-7 w-7 p-0 bg-background/40 backdrop-blur-sm"
+              className="h-7 w-7 p-0 bg-background/40 backdrop-blur-sm border-border/50"
               onClick={() => table.setPageIndex(0)}
               disabled={!table.getCanPreviousPage()}
             >
@@ -1034,7 +1073,7 @@ export function FinishedProductTable({
             </Button>
             <Button
               variant="outline"
-              className="h-7 w-7 p-0 bg-background/40 backdrop-blur-sm"
+              className="h-7 w-7 p-0 bg-background/40 backdrop-blur-sm border-border/50"
               onClick={() => table.previousPage()}
               disabled={!table.getCanPreviousPage()}
             >
@@ -1042,7 +1081,7 @@ export function FinishedProductTable({
             </Button>
             <Button
               variant="outline"
-              className="h-7 w-7 p-0 bg-background/40 backdrop-blur-sm"
+              className="h-7 w-7 p-0 bg-background/40 backdrop-blur-sm border-border/50"
               onClick={() => table.nextPage()}
               disabled={!table.getCanNextPage()}
             >
@@ -1050,7 +1089,7 @@ export function FinishedProductTable({
             </Button>
             <Button
               variant="outline"
-              className="h-7 w-7 p-0 bg-background/40 backdrop-blur-sm"
+              className="h-7 w-7 p-0 bg-background/40 backdrop-blur-sm border-border/50"
               onClick={() => table.setPageIndex(table.getPageCount() - 1)}
               disabled={!table.getCanNextPage()}
             >

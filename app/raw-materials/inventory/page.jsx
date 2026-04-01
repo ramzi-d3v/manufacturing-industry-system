@@ -23,6 +23,7 @@ import {
   IconTrendingUp,
   IconTrendingDown,
   IconMinus,
+  IconBuildingWarehouse,
 } from "@tabler/icons-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -93,9 +94,11 @@ export default function RawMaterialPage() {
   const [filteredMaterials, setFilteredMaterials] = useState([]);
   const [defectiveMaterials, setDefectiveMaterials] = useState([]);
   const [supplierStats, setSupplierStats] = useState([]);
+  const [warehouseStats, setWarehouseStats] = useState([]);
   const [loadingData, setLoadingData] = useState(true);
   const [error, setError] = useState(null);
   const [suppliersList, setSuppliersList] = useState([]);
+  const [warehousesList, setWarehousesList] = useState([]);
   const [loadingSuppliers, setLoadingSuppliers] = useState(false);
   const [isPopupOpen, setIsPopupOpen] = useState(false);
   const [editingMaterial, setEditingMaterial] = useState(null);
@@ -108,12 +111,14 @@ export default function RawMaterialPage() {
   
   const [stats, setStats] = useState({
     totalMaterials: 0,
+    totalQuantity: 0,
     totalValue: 0,
     totalDefective: 0,
     defectiveValue: 0,
     supplierDefects: 0,
     warehouseDefects: 0,
     totalSuppliers: 0,
+    totalWarehouses: 0,
     inStockCount: 0,
     outOfStockCount: 0,
   });
@@ -125,7 +130,6 @@ export default function RawMaterialPage() {
       
       setLoadingSuppliers(true);
       try {
-        // Fetch suppliers from suppliers/{userId}/list
         const suppliersRef = collection(db, "suppliers", user.uid, "list");
         const suppliersSnapshot = await getDocs(suppliersRef);
         const suppliersData = suppliersSnapshot.docs.map(doc => ({
@@ -133,7 +137,6 @@ export default function RawMaterialPage() {
           ...doc.data(),
         }));
         setSuppliersList(suppliersData);
-        console.log("Suppliers loaded:", suppliersData.length);
       } catch (error) {
         console.error("Error fetching suppliers from Firestore:", error);
         toast.error("Failed to load suppliers");
@@ -143,6 +146,27 @@ export default function RawMaterialPage() {
     };
     
     fetchSuppliers();
+  }, [user]);
+
+  // Fetch warehouses from Firestore
+  useEffect(() => {
+    const fetchWarehouses = async () => {
+      if (!user) return;
+      
+      try {
+        const warehousesRef = collection(db, "warehouses", user.uid, "list");
+        const warehousesSnapshot = await getDocs(warehousesRef);
+        const warehousesData = warehousesSnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data(),
+        }));
+        setWarehousesList(warehousesData);
+      } catch (error) {
+        console.error("Error fetching warehouses:", error);
+      }
+    };
+    
+    fetchWarehouses();
   }, [user]);
 
   // Firestore real-time listener for user's raw materials subcollection
@@ -155,19 +179,14 @@ export default function RawMaterialPage() {
 
     setLoadingData(true);
     
-    // Reference to the user's raw materials subcollection
     const userMaterialsRef = collection(db, "rawMaterials", user.uid, "materials");
     const q = query(userMaterialsRef, orderBy("createdAt", "desc"));
-
-    console.log("Setting up listener for:", `rawMaterials/${user.uid}/materials`);
 
     const unsubscribe = onSnapshot(
       q,
       (snapshot) => {
-        console.log("Snapshot received, size:", snapshot.size);
         const materialsData = snapshot.docs.map((doc) => {
           const data = doc.data();
-          console.log("Material data:", { id: doc.id, ...data });
           return {
             id: doc.id,
             ...data,
@@ -175,7 +194,6 @@ export default function RawMaterialPage() {
         });
         
         setMaterials(materialsData);
-        console.log("Materials loaded:", materialsData.length);
         setLoadingData(false);
         setError(null);
       },
@@ -232,20 +250,24 @@ export default function RawMaterialPage() {
 
     setFilteredMaterials(filtered);
 
-    // Calculate filtered stats
-    const totalValue = filtered.reduce((sum, m) => sum + (m.unitPrice || 0), 0);
+    // Calculate stats with total value from quantity * unitPrice
+    const totalQuantity = filtered.reduce((sum, m) => sum + (m.quantity || 0), 0);
+    const totalValue = filtered.reduce((sum, m) => sum + ((m.quantity || 0) * (m.unitPrice || 0)), 0);
     const inStockCount = filtered.filter(m => m.status === "In Stock").length;
     const outOfStockCount = filtered.filter(m => m.status === "Out of Stock").length;
     const uniqueSuppliers = new Set(filtered.map(m => m.supplierName)).size;
+    const uniqueWarehouses = new Set(filtered.map(m => m.warehouseName).filter(w => w)).size;
 
     setStats({
       totalMaterials: filtered.length,
-      totalValue,
+      totalQuantity: totalQuantity,
+      totalValue: totalValue,
       totalDefective: 0,
       defectiveValue: 0,
       supplierDefects: 0,
       warehouseDefects: 0,
       totalSuppliers: uniqueSuppliers,
+      totalWarehouses: uniqueWarehouses,
       inStockCount,
       outOfStockCount,
     });
@@ -258,15 +280,37 @@ export default function RawMaterialPage() {
           name: m.supplierName,
           materials: [],
           totalValue: 0,
+          totalQuantity: 0,
         });
       }
       if (m.supplierName) {
         const supplier = supplierMap.get(m.supplierName);
         supplier.materials.push(m.name);
-        supplier.totalValue += m.unitPrice || 0;
+        supplier.totalValue += (m.quantity || 0) * (m.unitPrice || 0);
+        supplier.totalQuantity += (m.quantity || 0);
       }
     });
     setSupplierStats(Array.from(supplierMap.values()));
+
+    // Warehouse stats
+    const warehouseMap = new Map();
+    filtered.forEach(m => {
+      if (m.warehouseName && !warehouseMap.has(m.warehouseName)) {
+        warehouseMap.set(m.warehouseName, {
+          name: m.warehouseName,
+          materials: [],
+          totalValue: 0,
+          totalQuantity: 0,
+        });
+      }
+      if (m.warehouseName) {
+        const warehouse = warehouseMap.get(m.warehouseName);
+        warehouse.materials.push(m.name);
+        warehouse.totalValue += (m.quantity || 0) * (m.unitPrice || 0);
+        warehouse.totalQuantity += (m.quantity || 0);
+      }
+    });
+    setWarehouseStats(Array.from(warehouseMap.values()));
   }, [materials, searchQuery, statusFilter, categoryFilter, sortBy]);
 
   // Add new material
@@ -310,12 +354,6 @@ export default function RawMaterialPage() {
     setIsPopupOpen(true);
   };
 
-  // Open popup for editing material
-  const handleEditMaterial = (material) => {
-    setEditingMaterial(material);
-    setIsPopupOpen(true);
-  };
-
   // Reset all filters
   const resetFilters = () => {
     setSearchQuery("");
@@ -333,7 +371,7 @@ export default function RawMaterialPage() {
           <SiteHeader />
           <div className="flex-1 p-8 flex items-center justify-center">
             <div className="text-center">
-              <IconLoader className="animate-spin text-slate-700" size={32} />
+              <IconLoader className="animate-spin text-primary" size={32} />
               <p className="mt-2 text-muted-foreground">Loading materials...</p>
             </div>
           </div>
@@ -349,7 +387,7 @@ export default function RawMaterialPage() {
         <SidebarInset>
           <SiteHeader />
           <div className="flex-1 p-8 flex items-center justify-center">
-            <Card className="max-w-md">
+            <Card className="max-w-md bg-background/80 backdrop-blur-sm border-border/50">
               <CardHeader>
                 <CardTitle className="text-destructive">Error</CardTitle>
                 <CardDescription>{error}</CardDescription>
@@ -374,7 +412,7 @@ export default function RawMaterialPage() {
         <SidebarInset>
           <SiteHeader />
           <div className="flex-1 p-8 flex items-center justify-center">
-            <Card className="max-w-md">
+            <Card className="max-w-md bg-background/80 backdrop-blur-sm border-border/50">
               <CardHeader>
                 <CardTitle>Authentication Required</CardTitle>
                 <CardDescription>Please log in to view raw materials.</CardDescription>
@@ -387,84 +425,38 @@ export default function RawMaterialPage() {
   }
 
   return (
-  <>
-    <style jsx global>{`
-      @keyframes pulse-glow-bright-1 {
-        0%, 100% {
-          opacity: 0.5;
-          transform: scale(1);
-        }
-        50% {
-          opacity: 0.9;
-          transform: scale(1.25);
-        }
-      }
-      
-      @keyframes pulse-glow-bright-2 {
-        0%, 100% {
-          opacity: 0.4;
-          transform: scale(1);
-        }
-        50% {
-          opacity: 0.85;
-          transform: scale(1.3);
-        }
-      }
-      
-      @keyframes pulse-glow-bright-3 {
-        0%, 100% {
-          opacity: 0.35;
-          transform: scale(1);
-        }
-        50% {
-          opacity: 0.8;
-          transform: scale(1.2);
-        }
-      }
-      
-      .animate-pulse-bright-1 {
-        animation: pulse-glow-bright-1 4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-      }
-      
-      .animate-pulse-bright-2 {
-        animation: pulse-glow-bright-2 5s cubic-bezier(0.4, 0, 0.6, 1) infinite 0.5s;
-      }
-      
-      .animate-pulse-bright-3 {
-        animation: pulse-glow-bright-3 4.5s cubic-bezier(0.4, 0, 0.6, 1) infinite 1s;
-      }
-    `}</style>
-    
     <SidebarProvider>
       <AppSidebar variant="inset" />
       <SidebarInset>
-        <SiteHeader className="relative overflow-hidden bg-zinc-950" />
-        <div className="pointer-events-none fixed inset-0 overflow-hidden">
-          {/* Top Left Glow - Brighter Purple */}
-          <div className="absolute -top-[10%] -left-[10%] h-50 w-50 rounded-full bg-purple-500/30 blur-[100px] animate-pulse-bright-1" />
-          {/* Center Right Glow - Brighter Indigo */}
-          <div className="absolute top-[20%] -right-[5%] h-100 w-100 rounded-full bg-indigo-400/25 blur-[90px] animate-pulse-bright-2" />
-          {/* Bottom Left Glow - Brighter Fuchsia */}
-          <div className="absolute bottom-[10%] -left-[5%] h-50 w-75 rounded-full bg-fuchsia-500/20 blur-[70px] animate-pulse-bright-3" />
+        <SiteHeader className="relative overflow-hidden" />
+        {/* Static background blur circles - using theme colors */}
+        <div className="pointer-events-none fixed inset-0 overflow-hidden z-0">
+          {/* Top Left Glow - Primary color */}
+          <div className="absolute -top-[10%] left-40 h-40 w-96 rounded-full bg-primary/10 dark:bg-primary/20 blur-[80px]" />
+          
+          {/* Center Right Glow - Purple */}
+          <div className="absolute top-[40%] -right-[5%] h-20 w-100 rounded-full bg-purple-500/10 dark:bg-purple-500/20 blur-[70px]" />
+          
+          {/* Bottom Left Glow - Blue */}
+          <div className="absolute bottom-[0%] left-80 h-30 w-72 rounded-full bg-blue-500/10 dark:bg-blue-500/20 blur-[60px]" />
         </div>
-        
-        <div className="flex-1 space-y-4 p-4 md:p-8 pt-6 relative z-10">
+        <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-3xl font-bold tracking-tight text-slate-100">Raw Materials</h2>
+              <h2 className="text-3xl font-bold tracking-tight">Raw Materials</h2>
               <p className="text-muted-foreground">
                 Track inventory, costs, and material batches
               </p>
             </div>
             <div className="flex gap-2">
-              <Button onClick={handleAddClick} variant="outline" className="cursor-pointer">
+              <Button onClick={handleAddClick} className="cursor-pointer">
                 <IconPlus className="mr-2 h-4 w-4" />
                 Add Material
               </Button>
             </div>
           </div>
 
-          {/* Stats Cards - Enhanced with trend indicators */}
+          {/* Stats Cards */}
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             {/* Total Materials Card */}
             <Card className="bg-background/40 backdrop-blur-sm border-border/50 shadow-sm hover:shadow-md transition-all duration-200">
@@ -483,21 +475,50 @@ export default function RawMaterialPage() {
                     <Badge className="bg-green-500/10 text-green-600 border-green-500/20 px-1.5 py-0 text-[10px]">
                       {stats.inStockCount} In Stock
                     </Badge>
-                    <Badge className="bg-amber-500/10 text-amber-600 border-amber-500/20 px-1.5 py-0 text-[10px]">
+                    <Badge className="bg-red-500/10 text-red-600 border-red-500/20 px-1.5 py-0 text-[10px]">
                       {stats.outOfStockCount} Out of Stock
                     </Badge>
                   </div>
-                  <div className="flex items-center gap-1 text-muted-foreground">
-                    {stats.totalMaterials > 0 ? (
+                </div>
+                <p className="text-[10px] text-muted-foreground mt-2">
+                  Total unique material batches
+                </p>
+              </CardContent>
+            </Card>
+
+            {/* Total Quantity Card */}
+            <Card className="bg-background/40 backdrop-blur-sm border-border/50 shadow-sm hover:shadow-md transition-all duration-200">
+              <CardHeader className="pb-2">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                    Total Quantity
+                  </CardTitle>
+                  <IconTruck className="h-4 w-4 text-muted-foreground" />
+                </div>
+                <div className="text-2xl font-bold mt-2">{stats.totalQuantity.toLocaleString()}</div>
+              </CardHeader>
+              <CardContent className="pt-0">
+                <div className="flex items-center justify-between text-xs">
+                  <div className="flex items-center gap-1">
+                    {stats.totalQuantity > 1000 ? (
                       <IconTrendingUp className="h-3 w-3 text-green-500" />
+                    ) : stats.totalQuantity > 0 ? (
+                      <IconTrendingUp className="h-3 w-3 text-yellow-500" />
                     ) : (
-                      <IconTrendingDown className="h-3 w-3 text-muted-foreground" />
+                      <IconTrendingDown className="h-3 w-3 text-red-500" />
                     )}
-                    <span>Active</span>
+                    <span className="text-muted-foreground">
+                      {stats.totalQuantity > 1000 ? 'High Volume' : stats.totalQuantity > 0 ? 'Medium Volume' : 'No Stock'}
+                    </span>
+                  </div>
+                  <div className="text-muted-foreground">
+                    {stats.totalMaterials > 0 && (
+                      <span>Avg: {(stats.totalQuantity / stats.totalMaterials).toFixed(1)}/batch</span>
+                    )}
                   </div>
                 </div>
                 <p className="text-[10px] text-muted-foreground mt-2">
-                  Total inventory items tracked
+                  Total units across all materials
                 </p>
               </CardContent>
             </Card>
@@ -512,13 +533,13 @@ export default function RawMaterialPage() {
                   <IconCurrencyDollar className="h-4 w-4 text-muted-foreground" />
                 </div>
                 <div className="text-2xl font-bold mt-2">
-                  Tsh {stats.totalValue.toLocaleString()}
+                  ${stats.totalValue.toLocaleString()}
                 </div>
               </CardHeader>
               <CardContent className="pt-0">
                 <div className="flex items-center justify-between text-xs">
                   <div className="flex items-center gap-1">
-                    {stats.totalValue > 1000000 ? (
+                    {stats.totalValue > 100000 ? (
                       <IconTrendingUp className="h-3 w-3 text-green-500" />
                     ) : stats.totalValue > 0 ? (
                       <IconTrendingUp className="h-3 w-3 text-yellow-500" />
@@ -526,17 +547,17 @@ export default function RawMaterialPage() {
                       <IconTrendingDown className="h-3 w-3 text-red-500" />
                     )}
                     <span className="text-muted-foreground">
-                      {stats.totalValue > 1000000 ? 'High Value' : stats.totalValue > 0 ? 'Medium Value' : 'No Value'}
+                      {stats.totalValue > 100000 ? 'High Value' : stats.totalValue > 0 ? 'Medium Value' : 'No Value'}
                     </span>
                   </div>
                   <div className="text-muted-foreground">
                     {stats.totalMaterials > 0 && (
-                      <span>Avg: Tsh {(stats.totalValue / stats.totalMaterials).toFixed(0)}</span>
+                      <span>Avg: ${(stats.totalValue / stats.totalMaterials).toFixed(0)}</span>
                     )}
                   </div>
                 </div>
                 <p className="text-[10px] text-muted-foreground mt-2">
-                  Current inventory valuation
+                  Total inventory valuation (quantity × unit price)
                 </p>
               </CardContent>
             </Card>
@@ -567,50 +588,13 @@ export default function RawMaterialPage() {
                     </span>
                   </div>
                   <div className="text-muted-foreground">
-                    {stats.totalMaterials > 0 && (
-                      <span>Avg: {(stats.totalMaterials / stats.totalSuppliers).toFixed(1)}/supplier</span>
+                    {stats.totalMaterials > 0 && stats.totalSuppliers > 0 && (
+                      <span>{(stats.totalMaterials / stats.totalSuppliers).toFixed(1)}/supplier</span>
                     )}
                   </div>
                 </div>
                 <p className="text-[10px] text-muted-foreground mt-2">
                   Material sourcing partners
-                </p>
-              </CardContent>
-            </Card>
-
-            {/* Batches Card */}
-            <Card className="bg-background/40 backdrop-blur-sm border-border/50 shadow-sm hover:shadow-md transition-all duration-200">
-              <CardHeader className="pb-2">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                    Material Batches
-                  </CardTitle>
-                  <IconTruck className="h-4 w-4 text-muted-foreground" />
-                </div>
-                <div className="text-2xl font-bold mt-2">{stats.totalMaterials}</div>
-              </CardHeader>
-              <CardContent className="pt-0">
-                <div className="flex items-center justify-between text-xs">
-                  <div className="flex items-center gap-1">
-                    {stats.inStockCount > stats.outOfStockCount ? (
-                      <IconTrendingUp className="h-3 w-3 text-green-500" />
-                    ) : stats.inStockCount === stats.outOfStockCount ? (
-                      <IconMinus className="h-3 w-3 text-yellow-500" />
-                    ) : (
-                      <IconTrendingDown className="h-3 w-3 text-red-500" />
-                    )}
-                    <span className="text-muted-foreground">
-                      {stats.inStockCount > stats.outOfStockCount ? 'Healthy Stock' : 'Low Stock Alert'}
-                    </span>
-                  </div>
-                  <div className="text-muted-foreground">
-                    {stats.inStockCount > 0 && (
-                      <span>{Math.round((stats.inStockCount / stats.totalMaterials) * 100)}% in stock</span>
-                    )}
-                  </div>
-                </div>
-                <p className="text-[10px] text-muted-foreground mt-2">
-                  Unique batch tracking
                 </p>
               </CardContent>
             </Card>
@@ -621,24 +605,24 @@ export default function RawMaterialPage() {
             {/* Main search and actions row */}
             <div className="flex flex-col sm:flex-row gap-3">
               <div className="flex-1 relative">
-                <IconSearch className="z-10absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <IconSearch className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground z-10" />
                 <Input
                   placeholder="Search by name, batch number, supplier, category..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-9 h-10 w-full bg-background/80 backdrop-blur-sm"
+                  className="pl-9 h-10 w-full bg-background/80 backdrop-blur-sm border-border/50"
                 />
               </div>
               
               <div className="flex gap-2">
                 <Select value={statusFilter} onValueChange={setStatusFilter}>
-                  <SelectTrigger className="w-[130px] h-10 cursor-pointer bg-background/80 backdrop-blur-sm">
+                  <SelectTrigger className="w-[130px] h-10 bg-background/80 backdrop-blur-sm border-border/50">
                     <IconPackage className="mr-2 h-4 w-4" />
                     <SelectValue placeholder="Status" />
                   </SelectTrigger>
                   <SelectContent>
                     {statusOptions.map((option) => (
-                      <SelectItem key={option.value} value={option.value} className="cursor-pointer">
+                      <SelectItem key={option.value} value={option.value}>
                         {option.label}
                       </SelectItem>
                     ))}
@@ -646,14 +630,14 @@ export default function RawMaterialPage() {
                 </Select>
 
                 <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-                  <SelectTrigger className="w-[130px] h-10 cursor-pointer bg-background/80 backdrop-blur-sm">
+                  <SelectTrigger className="w-[130px] h-10 bg-background/80 backdrop-blur-sm border-border/50">
                     <IconFilter className="mr-2 h-4 w-4" />
                     <SelectValue placeholder="Category" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all" className="cursor-pointer">All Categories</SelectItem>
+                    <SelectItem value="all">All Categories</SelectItem>
                     {categories.map((category) => (
-                      <SelectItem key={category.id} value={category.name} className="cursor-pointer">
+                      <SelectItem key={category.id} value={category.name}>
                         {category.name}
                       </SelectItem>
                     ))}
@@ -661,13 +645,13 @@ export default function RawMaterialPage() {
                 </Select>
 
                 <Select value={sortBy} onValueChange={setSortBy}>
-                  <SelectTrigger className="w-[140px] h-10 cursor-pointer bg-background/80 backdrop-blur-sm">
+                  <SelectTrigger className="w-[140px] h-10 bg-background/80 backdrop-blur-sm border-border/50">
                     <IconSortAscending className="mr-2 h-4 w-4" />
                     <SelectValue placeholder="Sort by" />
                   </SelectTrigger>
                   <SelectContent>
                     {sortOptions.map((option) => (
-                      <SelectItem key={option.value} value={option.value} className="cursor-pointer">
+                      <SelectItem key={option.value} value={option.value}>
                         {option.label}
                       </SelectItem>
                     ))}
@@ -675,10 +659,10 @@ export default function RawMaterialPage() {
                 </Select>
 
                 <Button
-                  variant="ghost"
+                  variant="outline"
                   size="sm"
                   onClick={resetFilters}
-                  className="h-10 px-3 bg-background/80 backdrop-blur-sm"
+                  className="h-10 px-3 bg-background/80 backdrop-blur-sm border-border/50"
                   title="Reset all filters"
                 >
                   <IconRefresh className="h-4 w-4" />
@@ -690,7 +674,7 @@ export default function RawMaterialPage() {
             {(searchQuery || statusFilter !== "all" || categoryFilter !== "all") && (
               <div className="flex flex-wrap gap-2">
                 {searchQuery && (
-                  <Badge variant="secondary" className="gap-1 px-2 py-1 text-xs bg-background/80 backdrop-blur-sm">
+                  <Badge variant="secondary" className="gap-1 px-2 py-1 text-xs bg-background/80 backdrop-blur-sm border-border/50">
                     <IconSearch className="h-3 w-3" />
                     Search: {searchQuery}
                     <button
@@ -702,7 +686,7 @@ export default function RawMaterialPage() {
                   </Badge>
                 )}
                 {statusFilter !== "all" && (
-                  <Badge variant="secondary" className="gap-1 px-2 py-1 text-xs bg-background/80 backdrop-blur-sm">
+                  <Badge variant="secondary" className="gap-1 px-2 py-1 text-xs bg-background/80 backdrop-blur-sm border-border/50">
                     <IconPackage className="h-3 w-3" />
                     Status: {statusFilter}
                     <button
@@ -714,7 +698,7 @@ export default function RawMaterialPage() {
                   </Badge>
                 )}
                 {categoryFilter !== "all" && (
-                  <Badge variant="secondary" className="gap-1 px-2 py-1 text-xs bg-background/80 backdrop-blur-sm">
+                  <Badge variant="secondary" className="gap-1 px-2 py-1 text-xs bg-background/80 backdrop-blur-sm border-border/50">
                     <IconFilter className="h-3 w-3" />
                     Category: {categoryFilter}
                     <button
@@ -733,21 +717,21 @@ export default function RawMaterialPage() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <h2 className="text-lg font-medium">Materials Inventory</h2>
-              <Badge variant="outline" className="px-2 py-0 h-6 bg-background/80 backdrop-blur-sm">
+              <Badge variant="outline" className="px-2 py-0 h-6 bg-background/80 backdrop-blur-sm border-border/50">
                 {filteredMaterials.length} {filteredMaterials.length === 1 ? "material" : "materials"}
               </Badge>
             </div>
           </div>
 
-          {/* Main Content */}
-          <Card className="bg-background/80 backdrop-blur-sm border-border/50">
+          {/* Main Content - Glass Table */}
+          <Card className="bg-background/40 backdrop-blur-sm border-border/50">
             <CardHeader>
               <CardTitle>Raw Materials Inventory</CardTitle>
               <CardDescription>
                 All material batches in stock. Click on any batch number to see details.
               </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-0 sm:p-6">
               <RawMaterialTable
                 data={filteredMaterials}
                 onUpdate={handleUpdateMaterial}
@@ -767,6 +751,5 @@ export default function RawMaterialPage() {
         />
       </SidebarInset>
     </SidebarProvider>
-  </>
-);
+  );
 }

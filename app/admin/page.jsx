@@ -16,8 +16,17 @@ import {
   deleteDoc,
   addDoc,
   query,
-  where
+  where,
+  orderBy,
+  Timestamp
 } from "firebase/firestore";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { 
   Table, 
   TableHeader, 
@@ -29,7 +38,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   Breadcrumb,
@@ -63,7 +72,8 @@ import {
   IconUser, IconCircleCheckFilled, IconCircleXFilled, IconUserX, 
   IconUsers, IconBan, IconChecklist, IconChevronRight, IconHome,
   IconTruck, IconPlus, IconEdit, IconTrash, IconBuildingStore,
-  IconChevronLeft, IconChevronsLeft, IconChevronsRight
+  IconChevronLeft, IconChevronsLeft, IconChevronsRight, IconBuildingWarehouse,
+  IconLocation, IconMail, IconPhone, IconMapPin, IconUserCircle
 } from "@tabler/icons-react";
 import { toast } from "sonner";
 
@@ -85,12 +95,29 @@ export default function AdminUsersPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 6;
   
-  // Suppliers State - Now stored in subcollection under admin user
+  // Suppliers State
   const [suppliers, setSuppliers] = useState([]);
   const [supplierDialogOpen, setSupplierDialogOpen] = useState(false);
   const [editingSupplier, setEditingSupplier] = useState(null);
   const [supplierForm, setSupplierForm] = useState({ name: "", contact: "", email: "", phone: "", address: "" });
   const [supplierCurrentPage, setSupplierCurrentPage] = useState(1);
+  
+  // Warehouses State - Removed email and description
+  const [warehouses, setWarehouses] = useState([]);
+  const [warehouseDialogOpen, setWarehouseDialogOpen] = useState(false);
+  const [editingWarehouse, setEditingWarehouse] = useState(null);
+  const [warehouseForm, setWarehouseForm] = useState({ name: "", location: "", type: "main", capacity: "", manager: "", phone: "" });
+  const [warehouseCurrentPage, setWarehouseCurrentPage] = useState(1);
+  
+  // Warehouse types
+  const warehouseTypes = [
+    { value: "main", label: "Main Warehouse" },
+    { value: "cold", label: "Cold Storage" },
+    { value: "hazardous", label: "Hazardous Materials" },
+    { value: "bulk", label: "Bulk Storage" },
+    { value: "distribution", label: "Distribution Center" },
+    { value: "temporary", label: "Temporary Storage" },
+  ];
   
   const router = useRouter();
   const auth = getFirebaseAuth();
@@ -107,6 +134,7 @@ export default function AdminUsersPage() {
             setCurrentAdminUser({ uid: user.uid, ...userData });
             fetchUsers();
             fetchSuppliers(user.uid);
+            fetchWarehouses(user.uid);
           } else {
             router.push("/");
           }
@@ -130,14 +158,23 @@ export default function AdminUsersPage() {
     }
   };
 
-  // Fetch suppliers from subcollection: suppliers/{adminUid}/list
   const fetchSuppliers = async (adminUid) => {
     try {
       const suppliersRef = collection(db, "suppliers", adminUid, "list");
-      const snapshot = await getDocs(suppliersRef);
+      const snapshot = await getDocs(query(suppliersRef, orderBy("createdAt", "desc")));
       setSuppliers(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
     } catch (error) {
       console.error("Error fetching suppliers:", error);
+    }
+  };
+
+  const fetchWarehouses = async (adminUid) => {
+    try {
+      const warehousesRef = collection(db, "warehouses", adminUid, "list");
+      const snapshot = await getDocs(query(warehousesRef, orderBy("createdAt", "desc")));
+      setWarehouses(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    } catch (error) {
+      console.error("Error fetching warehouses:", error);
     }
   };
 
@@ -201,7 +238,7 @@ export default function AdminUsersPage() {
     }
   };
 
-  // Supplier Management Functions - Now using subcollection
+  // Supplier Management Functions
   const handleAddSupplier = async () => {
     if (!supplierForm.name) {
       toast.error("Supplier name is required");
@@ -220,14 +257,14 @@ export default function AdminUsersPage() {
         const supplierRef = doc(db, "suppliers", currentAdminUser.uid, "list", editingSupplier.id);
         await updateDoc(supplierRef, {
           ...supplierForm,
-          updatedAt: new Date()
+          updatedAt: Timestamp.now()
         });
         toast.success("Supplier updated successfully");
       } else {
         await addDoc(suppliersRef, {
           ...supplierForm,
-          createdAt: new Date(),
-          updatedAt: new Date(),
+          createdAt: Timestamp.now(),
+          updatedAt: Timestamp.now(),
           createdBy: currentAdminUser.uid
         });
         toast.success("Supplier added successfully");
@@ -260,13 +297,72 @@ export default function AdminUsersPage() {
     }
   };
 
+  // Warehouse Management Functions - Removed email and description
+  const handleAddWarehouse = async () => {
+    if (!warehouseForm.name || !warehouseForm.location) {
+      toast.error("Warehouse name and location are required");
+      return;
+    }
+    if (!currentAdminUser) return;
+    
+    setIsProcessing(true);
+    try {
+      const warehousesRef = collection(db, "warehouses", currentAdminUser.uid, "list");
+      
+      if (editingWarehouse) {
+        const warehouseRef = doc(db, "warehouses", currentAdminUser.uid, "list", editingWarehouse.id);
+        await updateDoc(warehouseRef, {
+          ...warehouseForm,
+          capacity: parseFloat(warehouseForm.capacity) || 0,
+          updatedAt: Timestamp.now()
+        });
+        toast.success("Warehouse updated successfully");
+      } else {
+        await addDoc(warehousesRef, {
+          ...warehouseForm,
+          capacity: parseFloat(warehouseForm.capacity) || 0,
+          createdAt: Timestamp.now(),
+          updatedAt: Timestamp.now(),
+          createdBy: currentAdminUser.uid
+        });
+        toast.success("Warehouse added successfully");
+      }
+      
+      setWarehouseDialogOpen(false);
+      setEditingWarehouse(null);
+      setWarehouseForm({ name: "", location: "", type: "main", capacity: "", manager: "", phone: "" });
+      fetchWarehouses(currentAdminUser.uid);
+    } catch (error) {
+      console.error("Error saving warehouse:", error);
+      toast.error("Failed to save warehouse: " + error.message);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleDeleteWarehouse = async (id) => {
+    if (!currentAdminUser) return;
+    if (confirm("Are you sure you want to delete this warehouse? This may affect items stored here.")) {
+      try {
+        const warehouseRef = doc(db, "warehouses", currentAdminUser.uid, "list", id);
+        await deleteDoc(warehouseRef);
+        toast.success("Warehouse deleted successfully");
+        fetchWarehouses(currentAdminUser.uid);
+      } catch (error) {
+        console.error("Error deleting warehouse:", error);
+        toast.error("Failed to delete warehouse");
+      }
+    }
+  };
+
   // Statistics
   const stats = useMemo(() => ({
     total: users.length,
     approved: users.filter(u => u.isApproved && !u.isDeclined).length,
     declined: users.filter(u => u.isDeclined).length,
     suppliers: suppliers.length,
-  }), [users, suppliers]);
+    warehouses: warehouses.length,
+  }), [users, suppliers, warehouses]);
 
   // Filtered and Paginated Users
   const filteredUsers = useMemo(() => {
@@ -286,7 +382,9 @@ export default function AdminUsersPage() {
   // Filtered and Paginated Suppliers
   const filteredSuppliers = useMemo(() => {
     return suppliers.filter(supplier => {
-      return supplier.name.toLowerCase().includes(searchQuery.toLowerCase());
+      return supplier.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+             (supplier.contact || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+             (supplier.email || "").toLowerCase().includes(searchQuery.toLowerCase());
     });
   }, [suppliers, searchQuery]);
 
@@ -296,23 +394,27 @@ export default function AdminUsersPage() {
     return filteredSuppliers.slice(startIndex, startIndex + itemsPerPage);
   }, [filteredSuppliers, supplierCurrentPage]);
 
+  // Filtered and Paginated Warehouses
+  const filteredWarehouses = useMemo(() => {
+    return warehouses.filter(warehouse => {
+      return warehouse.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+             warehouse.location.toLowerCase().includes(searchQuery.toLowerCase()) ||
+             (warehouse.manager || "").toLowerCase().includes(searchQuery.toLowerCase());
+    });
+  }, [warehouses, searchQuery]);
+
+  const totalWarehousePages = Math.ceil(filteredWarehouses.length / itemsPerPage);
+  const paginatedWarehouses = useMemo(() => {
+    const startIndex = (warehouseCurrentPage - 1) * itemsPerPage;
+    return filteredWarehouses.slice(startIndex, startIndex + itemsPerPage);
+  }, [filteredWarehouses, warehouseCurrentPage]);
+
   // Reset pagination when search changes
   useEffect(() => {
     setCurrentPage(1);
     setSupplierCurrentPage(1);
+    setWarehouseCurrentPage(1);
   }, [searchQuery]);
-
-  if (loading) {
-    return (
-      <div className="flex h-screen items-center justify-center bg-[#0a0a0a]">
-        <IconLoader className="animate-spin text-slate-700" size={32} />
-      </div>
-    );
-  }
-
-  if (!isAdmin) {
-    return null;
-  }
 
   // Pagination Component
   const Pagination = ({ currentPage, totalPages, onPageChange }) => {
@@ -363,6 +465,18 @@ export default function AdminUsersPage() {
     );
   };
 
+  if (loading) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-[#0a0a0a]">
+        <IconLoader className="animate-spin text-slate-700" size={32} />
+      </div>
+    );
+  }
+
+  if (!isAdmin) {
+    return null;
+  }
+
   return (
     <div className="min-h-screen bg-[#0a0a0a] py-8 px-6 md:px-16 lg:px-24 font-sans text-slate-200">
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
@@ -372,7 +486,7 @@ export default function AdminUsersPage() {
       </div>
       
       <div className="max-w-6xl mx-auto space-y-8">
-        {/* Breadcrumb with Navigation - Same Row */}
+        {/* Breadcrumb */}
         <div className="flex items-center justify-between">
           <Breadcrumb>
             <BreadcrumbList>
@@ -391,58 +505,99 @@ export default function AdminUsersPage() {
               </BreadcrumbItem>
             </BreadcrumbList>
           </Breadcrumb>
+        </div>
 
-          {/* Navigation Tabs */}
-          <div className="flex gap-2">
+        {/* Title */}
+        <div>
+          <h1 className="text-3xl font-semibold tracking-tight text-white">Admin Dashboard</h1>
+          <p className="text-slate-500 text-sm tracking-wide mt-1">
+            Manage users, suppliers, and warehouses
+          </p>
+        </div>
+
+        {/* Tab Navigation - Underlined Bottom */}
+        <div className="border-b border-white/10">
+          <div className="flex gap-8">
             <button
               onClick={() => {
                 setActiveTab("users");
                 setSearchQuery("");
               }}
-              className={`cursor-pointer rounded-lg px-6 py-2 text-xs font-medium transition-all ${
+              className={cn(
+                "pb-3 px-1 text-sm font-medium transition-all duration-200 relative",
                 activeTab === "users"
-                  ? "border-b-3 bg-white/5"
-                  : "text-slate-500 hover:text-white hover:bg-white/5"
-              }`}
+                  ? "text-white"
+                  : "text-slate-500 hover:text-slate-300"
+              )}
             >
-              <IconUsers size={12} className="inline mr-2" />
-              Users
+              <div className="flex items-center gap-2">
+                <IconUsers size={16} />
+                Users
+                <Badge variant="secondary" className="ml-1 text-[10px] px-1.5 bg-white/10 text-slate-400">
+                  {stats.total}
+                </Badge>
+              </div>
+              {activeTab === "users" && (
+                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-white rounded-full" />
+              )}
             </button>
+            
             <button
               onClick={() => {
                 setActiveTab("suppliers");
                 setSearchQuery("");
               }}
-              className={`cursor-pointer rounded-lg px-6 py-2 text-xs font-medium transition-all ${
+              className={cn(
+                "pb-3 px-1 text-sm font-medium transition-all duration-200 relative",
                 activeTab === "suppliers"
-                  ? "border-b-3 bg-white/5"
-                  : "text-slate-500 hover:text-white hover:bg-white/5"
-              }`}
+                  ? "text-white"
+                  : "text-slate-500 hover:text-slate-300"
+              )}
             >
-              <IconTruck size={14} className="inline mr-2" />
-              Suppliers
+              <div className="flex items-center gap-2">
+                <IconTruck size={16} />
+                Suppliers
+                <Badge variant="secondary" className="ml-1 text-[10px] px-1.5 bg-white/10 text-slate-400">
+                  {stats.suppliers}
+                </Badge>
+              </div>
+              {activeTab === "suppliers" && (
+                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-white rounded-full" />
+              )}
+            </button>
+            
+            <button
+              onClick={() => {
+                setActiveTab("warehouses");
+                setSearchQuery("");
+              }}
+              className={cn(
+                "pb-3 px-1 text-sm font-medium transition-all duration-200 relative",
+                activeTab === "warehouses"
+                  ? "text-white"
+                  : "text-slate-500 hover:text-slate-300"
+              )}
+            >
+              <div className="flex items-center gap-2">
+                <IconBuildingWarehouse size={16} />
+                Warehouses
+                <Badge variant="secondary" className="ml-1 text-[10px] px-1.5 bg-white/10 text-slate-400">
+                  {stats.warehouses}
+                </Badge>
+              </div>
+              {activeTab === "warehouses" && (
+                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-white rounded-full" />
+              )}
             </button>
           </div>
         </div>
 
-        {/* Title with Search Bar - Same Row */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-semibold tracking-tight text-white">
-              {activeTab === "users" ? "User Management" : "Supplier Management"}
-            </h1>
-            <p className="text-slate-500 text-sm tracking-wide mt-1">
-              {activeTab === "users" 
-                ? "Manage user roles and system access" 
-                : "Manage raw material suppliers for procurement"}
-            </p>
-          </div>
-          
-          {/* Search Bar */}
+        {/* Search Bar */}
+        <div className="flex items-center justify-end">
           <div className="relative w-64">
             <IconSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600" size={16} />
             <Input 
-              placeholder={`Search ${activeTab === "users" ? "users..." : "suppliers..."}`}
+              placeholder={`Search ${activeTab === "users" ? "users" : activeTab === "suppliers" ? "suppliers" : "warehouses"}...`}
               className="pl-9 bg-white/[0.03] border-white/5 text-sm text-white rounded-xl h-9 focus:ring-1 focus:ring-white/10"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -460,7 +615,7 @@ export default function AdminUsersPage() {
                 { label: "Approved", count: stats.approved, icon: IconChecklist, color: "text-green-400" },
                 { label: "Declined", count: stats.declined, icon: IconBan, color: "text-red-400" },
               ].map((card, i) => (
-                <Card key={i} className="bg-white/[0.02] border-white/5 backdrop-blur-md rounded-2xl shadow-xl hover:scale-[1.02] transition-transform duration-300">
+                <Card key={i} className="bg-white/[0.02] border-white/5 backdrop-blur-md rounded-2xl shadow-xl">
                   <CardContent className="p-5 flex items-center justify-between">
                     <div className="space-y-1">
                       <p className="text-xs uppercase tracking-wider text-slate-500 font-medium">{card.label}</p>
@@ -562,7 +717,7 @@ export default function AdminUsersPage() {
                   </TableBody>
                 </Table>
                 
-                {/* Pagination - Bottom Right */}
+                {/* Pagination */}
                 {filteredUsers.length > itemsPerPage && (
                   <Pagination 
                     currentPage={currentPage}
@@ -577,136 +732,341 @@ export default function AdminUsersPage() {
 
         {/* Suppliers Tab Content */}
         {activeTab === "suppliers" && (
-          <Card className="bg-white/[0.01] border-white/5 backdrop-blur-3xl rounded-3xl overflow-hidden shadow-2xl">
-            <div className="p-6">
-              <div className="flex justify-between items-center mb-6">
-                <div>
-                  <h3 className="text-xl font-semibold text-white flex items-center gap-2">
-                    <IconTruck size={20} /> Supplier Directory
-                  </h3>
-                  <p className="text-sm text-slate-500 mt-1">Manage raw material suppliers ({stats.suppliers} total)</p>
-                </div>
-                <Dialog open={supplierDialogOpen} onOpenChange={setSupplierDialogOpen}>
-                  <DialogTrigger asChild>
-                    <Button className="bg-white/5 hover:bg-white/10 text-white text-sm cursor-pointer">
-                      <IconPlus size={14} className="mr-2" /> Add Supplier
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="bg-[#0f0f0f] border-white/10 text-slate-200 rounded-2xl">
-                    <DialogHeader>
-                      <DialogTitle className="text-xl">{editingSupplier ? "Edit Supplier" : "Add New Supplier"}</DialogTitle>
-                      <DialogDescription className="text-slate-500 text-sm">
-                        Enter supplier details for raw material procurement
-                      </DialogDescription>
-                    </DialogHeader>
-                    <div className="space-y-4 py-4">
+          <div className="space-y-5">
+            {/* Add Supplier Button */}
+            <div className="flex justify-end">
+              <Dialog open={supplierDialogOpen} onOpenChange={setSupplierDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button className="bg-white/5 hover:bg-white/10 text-white text-sm cursor-pointer">
+                    <IconPlus size={14} className="mr-2" /> Add Supplier
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="bg-[#0f0f0f] border-white/10 text-slate-200 rounded-2xl max-w-md">
+                  <DialogHeader>
+                    <DialogTitle className="text-xl">{editingSupplier ? "Edit Supplier" : "Add New Supplier"}</DialogTitle>
+                    <DialogDescription className="text-slate-500 text-sm">
+                      Enter supplier details for raw material procurement
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="space-y-4 py-4">
+                    <div>
+                      <Label className="text-sm text-slate-400">Company Name *</Label>
+                      <Input 
+                        value={supplierForm.name}
+                        onChange={(e) => setSupplierForm({...supplierForm, name: e.target.value})}
+                        className="bg-white/[0.03] border-white/10 text-sm mt-1"
+                        placeholder="ABC Metals Corp"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-sm text-slate-400">Contact Person</Label>
+                      <Input 
+                        value={supplierForm.contact}
+                        onChange={(e) => setSupplierForm({...supplierForm, contact: e.target.value})}
+                        className="bg-white/[0.03] border-white/10 text-sm mt-1"
+                        placeholder="John Smith"
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <Label className="text-sm text-slate-400">Company Name *</Label>
+                        <Label className="text-sm text-slate-400">Email</Label>
                         <Input 
-                          value={supplierForm.name}
-                          onChange={(e) => setSupplierForm({...supplierForm, name: e.target.value})}
+                          value={supplierForm.email}
+                          onChange={(e) => setSupplierForm({...supplierForm, email: e.target.value})}
                           className="bg-white/[0.03] border-white/10 text-sm mt-1"
-                          placeholder="ABC Metals Corp"
+                          placeholder="contact@abcmetals.com"
                         />
                       </div>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <Label className="text-sm text-slate-400">Contact Person</Label>
-                          <Input 
-                            value={supplierForm.contact}
-                            onChange={(e) => setSupplierForm({...supplierForm, contact: e.target.value})}
-                            className="bg-white/[0.03] border-white/10 text-sm mt-1"
-                            placeholder="John Smith"
-                          />
-                        </div>
-                        <div>
-                          <Label className="text-sm text-slate-400">Email</Label>
-                          <Input 
-                            value={supplierForm.email}
-                            onChange={(e) => setSupplierForm({...supplierForm, email: e.target.value})}
-                            className="bg-white/[0.03] border-white/10 text-sm mt-1"
-                            placeholder="contact@abcmetals.com"
-                          />
-                        </div>
-                      </div>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <Label className="text-sm text-slate-400">Phone</Label>
-                          <Input 
-                            value={supplierForm.phone}
-                            onChange={(e) => setSupplierForm({...supplierForm, phone: e.target.value})}
-                            className="bg-white/[0.03] border-white/10 text-sm mt-1"
-                            placeholder="+1-555-0123"
-                          />
-                        </div>
-                        <div>
-                          <Label className="text-sm text-slate-400">Address</Label>
-                          <Input 
-                            value={supplierForm.address}
-                            onChange={(e) => setSupplierForm({...supplierForm, address: e.target.value})}
-                            className="bg-white/[0.03] border-white/10 text-sm mt-1"
-                            placeholder="123 Industrial Park"
-                          />
-                        </div>
+                      <div>
+                        <Label className="text-sm text-slate-400">Phone</Label>
+                        <Input 
+                          value={supplierForm.phone}
+                          onChange={(e) => setSupplierForm({...supplierForm, phone: e.target.value})}
+                          className="bg-white/[0.03] border-white/10 text-sm mt-1"
+                          placeholder="+1-555-0123"
+                        />
                       </div>
                     </div>
-                    <DialogFooter>
-                      <Button variant="ghost" onClick={() => setSupplierDialogOpen(false)} className="text-slate-400 text-sm">Cancel</Button>
-                      <Button onClick={handleAddSupplier} className="bg-white/10 hover:bg-white/20 text-sm" disabled={isProcessing}>
-                        {isProcessing ? "Saving..." : editingSupplier ? "Update" : "Add Supplier"}
-                      </Button>
-                    </DialogFooter>
-                  </DialogContent>
-                </Dialog>
-              </div>
-              <div className="space-y-3">
-                {paginatedSuppliers.map(supplier => (
-                  <div key={supplier.id} className="flex items-center justify-between p-4 bg-white/[0.02] rounded-xl border border-white/5 hover:bg-white/[0.05] transition-colors">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3">
-                        <IconBuildingStore size={18} className="text-orange-400" />
-                        <span className="text-base font-medium text-white">{supplier.name}</span>
-                      </div>
-                      <div className="grid grid-cols-3 gap-4 mt-2 text-sm text-slate-500">
-                        {supplier.contact && <span>Contact: {supplier.contact}</span>}
-                        {supplier.email && <span>Email: {supplier.email}</span>}
-                        {supplier.phone && <span>Phone: {supplier.phone}</span>}
-                      </div>
-                      {supplier.address && (
-                        <p className="text-sm text-slate-600 mt-1">{supplier.address}</p>
-                      )}
-                    </div>
-                    <div className="flex gap-2">
-                      <Button variant="ghost" size="sm" className="h-8 w-8 text-slate-500 hover:text-white" onClick={() => {
-                        setEditingSupplier(supplier);
-                        setSupplierForm(supplier);
-                        setSupplierDialogOpen(true);
-                      }}>
-                        <IconEdit size={16} />
-                      </Button>
-                      <Button variant="ghost" size="sm" className="h-8 w-8 text-slate-500 hover:text-red-400" onClick={() => handleDeleteSupplier(supplier.id)}>
-                        <IconTrash size={16} />
-                      </Button>
+                    <div>
+                      <Label className="text-sm text-slate-400">Address</Label>
+                      <Input 
+                        value={supplierForm.address}
+                        onChange={(e) => setSupplierForm({...supplierForm, address: e.target.value})}
+                        className="bg-white/[0.03] border-white/10 text-sm mt-1"
+                        placeholder="123 Industrial Park"
+                      />
                     </div>
                   </div>
-                ))}
-                {filteredSuppliers.length === 0 && (
-                  <div className="text-center py-12 text-slate-500 text-sm">
-                    {searchQuery ? "No suppliers match your search" : "No suppliers added yet"}
-                  </div>
-                )}
-              </div>
-              
-              {/* Pagination - Bottom Right for Suppliers */}
-              {filteredSuppliers.length > itemsPerPage && (
-                <Pagination 
-                  currentPage={supplierCurrentPage}
-                  totalPages={totalSupplierPages}
-                  onPageChange={setSupplierCurrentPage}
-                />
-              )}
+                  <DialogFooter>
+                    <Button variant="ghost" onClick={() => setSupplierDialogOpen(false)} className="text-slate-400 text-sm">Cancel</Button>
+                    <Button onClick={handleAddSupplier} className="bg-white/10 hover:bg-white/20 text-sm" disabled={isProcessing}>
+                      {isProcessing ? "Saving..." : editingSupplier ? "Update" : "Add Supplier"}
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
             </div>
-          </Card>
+
+            {/* Suppliers Grid */}
+            <div className="grid gap-4 md:grid-cols-2">
+              {paginatedSuppliers.map(supplier => (
+                <Card key={supplier.id} className="bg-white/[0.02] border-white/5 rounded-2xl hover:bg-white/[0.05] transition-all duration-200">
+                  <CardContent className="p-5">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3 mb-3">
+                          <div className="h-10 w-10 rounded-xl bg-blue-500/10 flex items-center justify-center">
+                            <IconBuildingStore size={20} className="text-blue-400" />
+                          </div>
+                          <div>
+                            <h3 className="text-base font-semibold text-white">{supplier.name}</h3>
+                            {supplier.contact && (
+                              <p className="text-xs text-slate-400 flex items-center gap-1 mt-0.5">
+                                <IconUserCircle size={12} />
+                                {supplier.contact}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                        
+                        <div className="grid grid-cols-2 gap-3 mt-3">
+                          {supplier.email && (
+                            <div className="flex items-center gap-2 text-xs text-slate-500">
+                              <IconMail size={12} />
+                              <span className="truncate">{supplier.email}</span>
+                            </div>
+                          )}
+                          {supplier.phone && (
+                            <div className="flex items-center gap-2 text-xs text-slate-500">
+                              <IconPhone size={12} />
+                              <span>{supplier.phone}</span>
+                            </div>
+                          )}
+                          {supplier.address && (
+                            <div className="col-span-2 flex items-center gap-2 text-xs text-slate-500 mt-1">
+                              <IconMapPin size={12} />
+                              <span className="truncate">{supplier.address}</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex gap-1">
+                        <Button variant="ghost" size="sm" className="h-8 w-8 text-slate-500 hover:text-white" onClick={() => {
+                          setEditingSupplier(supplier);
+                          setSupplierForm(supplier);
+                          setSupplierDialogOpen(true);
+                        }}>
+                          <IconEdit size={16} />
+                        </Button>
+                        <Button variant="ghost" size="sm" className="h-8 w-8 text-slate-500 hover:text-red-400" onClick={() => handleDeleteSupplier(supplier.id)}>
+                          <IconTrash size={16} />
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+            
+            {filteredSuppliers.length === 0 && (
+              <div className="text-center py-12 text-slate-500 text-sm">
+                {searchQuery ? "No suppliers match your search" : "No suppliers added yet"}
+              </div>
+            )}
+            
+            {/* Pagination */}
+            {filteredSuppliers.length > itemsPerPage && (
+              <Pagination 
+                currentPage={supplierCurrentPage}
+                totalPages={totalSupplierPages}
+                onPageChange={setSupplierCurrentPage}
+              />
+            )}
+          </div>
+        )}
+
+        {/* Warehouses Tab Content - Removed email and description */}
+        {activeTab === "warehouses" && (
+          <div className="space-y-5">
+            {/* Add Warehouse Button */}
+            <div className="flex justify-end">
+              <Dialog open={warehouseDialogOpen} onOpenChange={setWarehouseDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button className="bg-white/5 hover:bg-white/10 text-white text-sm cursor-pointer">
+                    <IconPlus size={14} className="mr-2" /> Add Warehouse
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="bg-[#0f0f0f] border-white/10 text-slate-200 rounded-2xl max-w-md">
+                  <DialogHeader>
+                    <DialogTitle className="text-xl">{editingWarehouse ? "Edit Warehouse" : "Add New Warehouse"}</DialogTitle>
+                    <DialogDescription className="text-slate-500 text-sm">
+                      Enter warehouse details for inventory storage
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="space-y-4 py-4">
+                    <div>
+                      <Label className="text-sm text-slate-400">Warehouse Name *</Label>
+                      <Input 
+                        value={warehouseForm.name}
+                        onChange={(e) => setWarehouseForm({...warehouseForm, name: e.target.value})}
+                        className="bg-white/[0.03] border-white/10 text-sm mt-1"
+                        placeholder="Main Warehouse"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-sm text-slate-400">Location *</Label>
+                      <Input 
+                        value={warehouseForm.location}
+                        onChange={(e) => setWarehouseForm({...warehouseForm, location: e.target.value})}
+                        className="bg-white/[0.03] border-white/10 text-sm mt-1"
+                        placeholder="Building A, Floor 2"
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label className="text-sm text-slate-400">Warehouse Type</Label>
+                        <Select value={warehouseForm.type} onValueChange={(v) => setWarehouseForm({...warehouseForm, type: v})}>
+                          <SelectTrigger className="bg-white/[0.03] border-white/10 text-sm">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {warehouseTypes.map((type) => (
+                              <SelectItem key={type.value} value={type.value}>
+                                {type.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <Label className="text-sm text-slate-400">Capacity (sq ft)</Label>
+                        <Input 
+                          type="number"
+                          value={warehouseForm.capacity}
+                          onChange={(e) => setWarehouseForm({...warehouseForm, capacity: e.target.value})}
+                          className="bg-white/[0.03] border-white/10 text-sm mt-1"
+                          placeholder="10000"
+                        />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label className="text-sm text-slate-400">Manager Name</Label>
+                        <Input 
+                          value={warehouseForm.manager}
+                          onChange={(e) => setWarehouseForm({...warehouseForm, manager: e.target.value})}
+                          className="bg-white/[0.03] border-white/10 text-sm mt-1"
+                          placeholder="John Doe"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-sm text-slate-400">Phone</Label>
+                        <Input 
+                          value={warehouseForm.phone}
+                          onChange={(e) => setWarehouseForm({...warehouseForm, phone: e.target.value})}
+                          className="bg-white/[0.03] border-white/10 text-sm mt-1"
+                          placeholder="+1-555-0123"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                  <DialogFooter>
+                    <Button variant="ghost" onClick={() => setWarehouseDialogOpen(false)} className="text-slate-400 text-sm">Cancel</Button>
+                    <Button onClick={handleAddWarehouse} className="bg-white/10 hover:bg-white/20 text-sm" disabled={isProcessing}>
+                      {isProcessing ? "Saving..." : editingWarehouse ? "Update" : "Add Warehouse"}
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+            </div>
+
+            {/* Warehouses Grid - Removed email and description */}
+            <div className="grid gap-4 md:grid-cols-2">
+              {paginatedWarehouses.map(warehouse => (
+                <Card key={warehouse.id} className="bg-white/[0.02] border-white/5 rounded-2xl hover:bg-white/[0.05] transition-all duration-200">
+                  <CardContent className="p-5">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3 mb-3">
+                          <div className="h-10 w-10 rounded-xl bg-purple-500/10 flex items-center justify-center">
+                            <IconBuildingWarehouse size={20} className="text-purple-400" />
+                          </div>
+                          <div>
+                            <h3 className="text-base font-semibold text-white">{warehouse.name}</h3>
+                            <p className="text-xs text-slate-400 flex items-center gap-1 mt-0.5">
+                              <IconLocation size={12} />
+                              {warehouse.location}
+                            </p>
+                          </div>
+                        </div>
+                        
+                        <div className="grid grid-cols-2 gap-3 mt-3">
+                          {warehouse.type && (
+                            <div className="flex items-center gap-2 text-xs text-slate-500">
+                              <Badge variant="outline" className="text-[10px] bg-white/5">
+                                {warehouseTypes.find(t => t.value === warehouse.type)?.label || warehouse.type}
+                              </Badge>
+                            </div>
+                          )}
+                          {warehouse.capacity && (
+                            <div className="flex items-center gap-2 text-xs text-slate-500">
+                              <span>Capacity: {warehouse.capacity} sq ft</span>
+                            </div>
+                          )}
+                          {warehouse.manager && (
+                            <div className="col-span-2 flex items-center gap-2 text-xs text-slate-500">
+                              <IconUserCircle size={12} />
+                              <span>Manager: {warehouse.manager}</span>
+                            </div>
+                          )}
+                          {warehouse.phone && (
+                            <div className="flex items-center gap-2 text-xs text-slate-500">
+                              <IconPhone size={12} />
+                              <span>{warehouse.phone}</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex gap-1">
+                        <Button variant="ghost" size="sm" className="h-8 w-8 text-slate-500 hover:text-white" onClick={() => {
+                          setEditingWarehouse(warehouse);
+                          setWarehouseForm({
+                            name: warehouse.name || "",
+                            location: warehouse.location || "",
+                            type: warehouse.type || "main",
+                            capacity: warehouse.capacity?.toString() || "",
+                            manager: warehouse.manager || "",
+                            phone: warehouse.phone || "",
+                          });
+                          setWarehouseDialogOpen(true);
+                        }}>
+                          <IconEdit size={16} />
+                        </Button>
+                        <Button variant="ghost" size="sm" className="h-8 w-8 text-slate-500 hover:text-red-400" onClick={() => handleDeleteWarehouse(warehouse.id)}>
+                          <IconTrash size={16} />
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+            
+            {filteredWarehouses.length === 0 && (
+              <div className="text-center py-12 text-slate-500 text-sm">
+                {searchQuery ? "No warehouses match your search" : "No warehouses added yet"}
+              </div>
+            )}
+            
+            {/* Pagination */}
+            {filteredWarehouses.length > itemsPerPage && (
+              <Pagination 
+                currentPage={warehouseCurrentPage}
+                totalPages={totalWarehousePages}
+                onPageChange={setWarehouseCurrentPage}
+              />
+            )}
+          </div>
         )}
 
         {/* Decline User Dialog */}
@@ -741,4 +1101,9 @@ export default function AdminUsersPage() {
       </div>
     </div>
   );
+}
+
+// Helper function for className merging
+function cn(...classes) {
+  return classes.filter(Boolean).join(" ");
 }

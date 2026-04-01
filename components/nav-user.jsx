@@ -12,10 +12,7 @@ import {
   signOut 
 } from "firebase/auth"
 import {
-  IconCreditCard,
-  IconDotsVertical,
   IconLogout,
-  IconNotification,
   IconUserCircle,
 } from "@tabler/icons-react"
 
@@ -27,7 +24,6 @@ import {
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
@@ -41,7 +37,6 @@ import {
 } from "@/components/ui/sidebar"
 import { toast } from "sonner"; 
 
-// Ensure your firebase app is initialized elsewhere
 const db = getFirestore()
 const auth = getAuth()
 
@@ -49,25 +44,23 @@ export function NavUser({ user: initialUser }) {
   const { isMobile } = useSidebar()
   const router = useRouter()
   
-  // State to hold Firestore data
   const [userData, setUserData] = useState({
     name: initialUser?.name || "Loading...",
     email: initialUser?.email || "",
     avatar: initialUser?.avatar || ""
   })
 
-  // 1. Fetch data from Firestore collection 'user_details'
+  // Fetch data from Firestore collection 'user_details'
   useEffect(() => {
     if (!auth.currentUser?.uid) return
 
     const userDocRef = doc(db, "user_details", auth.currentUser.uid)
     
-    // Listen for real-time updates
     const unsubscribe = onSnapshot(userDocRef, (docSnap) => {
       if (docSnap.exists()) {
         const data = docSnap.data()
         setUserData({
-          name: data.firstName|| "User",
+          name: data.firstName || "User",
           email: data.email || auth.currentUser.email,
           avatar: data.avatar_url || data.avatar || ""
         })
@@ -77,14 +70,12 @@ export function NavUser({ user: initialUser }) {
     return () => unsubscribe()
   }, [])
 
-  // 2. Logout Function
   const handleLogout = async () => {
     try {
       await signOut(auth)
       router.replace("/signin") 
     } catch (error) {
-      toast.error("Network or Sever Error" );
-      
+      toast.error("Network or Server Error");
     }
   }
 
@@ -108,7 +99,6 @@ export function NavUser({ user: initialUser }) {
                   {userData.email}
                 </span>
               </div>
-              <IconDotsVertical className="ml-auto size-4 cursor-pointer" />
             </SidebarMenuButton>
           </DropdownMenuTrigger>
           <DropdownMenuContent
@@ -116,7 +106,7 @@ export function NavUser({ user: initialUser }) {
             side={isMobile ? "bottom" : "right"}
             align="end"
             sideOffset={4}>
-            <DropdownMenuLabel className="p-0 font-normal ">
+            <DropdownMenuLabel className="p-0 font-normal">
               <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
                 <Avatar className="h-8 w-8 rounded-lg">
                   <AvatarImage src={userData.avatar} alt={userData.name} />
@@ -132,21 +122,6 @@ export function NavUser({ user: initialUser }) {
                 </div>
               </div>
             </DropdownMenuLabel>
-            <DropdownMenuSeparator  />
-            <DropdownMenuGroup>
-              <DropdownMenuItem>
-                <IconUserCircle className="mr-2 h-4 w-4" />
-                Account
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <IconCreditCard className="mr-2 h-4 w-4" />
-                Billing
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <IconNotification className="mr-2 h-4 w-4" />
-                Notifications
-              </DropdownMenuItem>
-            </DropdownMenuGroup>
             <DropdownMenuSeparator />
             <DropdownMenuItem 
               onClick={handleLogout}

@@ -44,10 +44,10 @@ import { toast } from "sonner";
 
 // Quality grade options
 const qualityGradeOptions = [
-  { value: "Premium", label: "Premium", icon: IconAward, color: "text-purple-500" },
-  { value: "Flagship", label: "Flagship", icon: IconStar, color: "text-amber-500" },
-  { value: "Standard", label: "Standard", icon: IconPackage, color: "text-blue-500" },
-  { value: "Economy", label: "Economy", icon: IconFlag, color: "text-green-500" },
+  { value: "premium", label: "Premium", icon: IconAward, color: "text-purple-500" },
+  { value: "flagship", label: "Flagship", icon: IconStar, color: "text-amber-500" },
+  { value: "standard", label: "Standard", icon: IconPackage, color: "text-blue-500" },
+  { value: "economy", label: "Economy", icon: IconFlag, color: "text-green-500" },
 ];
 
 // Testing status options
@@ -75,7 +75,7 @@ export function FinishedProductPopup({
     quantity: 0,
     costPrice: 0,
     sellingPrice: 0,
-    qualityGrade: "Standard",
+    qualityGrade: "standard",
     testingStatus: "not_tested",
     description: "",
     productionDate: null,
@@ -95,7 +95,7 @@ export function FinishedProductPopup({
         quantity: product.quantity || 0,
         costPrice: product.costPrice || 0,
         sellingPrice: product.sellingPrice || 0,
-        qualityGrade: product.qualityGrade || "Standard",
+        qualityGrade: product.qualityGrade || "standard",
         testingStatus: product.testingStatus || "not_tested",
         description: product.description || "",
         productionDate: product.productionDate ? new Date(product.productionDate) : null,
@@ -118,7 +118,7 @@ export function FinishedProductPopup({
       quantity: 0,
       costPrice: 0,
       sellingPrice: 0,
-      qualityGrade: "Standard",
+      qualityGrade: "standard",
       testingStatus: "not_tested",
       description: "",
       productionDate: null,
@@ -199,297 +199,322 @@ export function FinishedProductPopup({
   return (
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent 
-        className="w-[90vw] max-w-[90vw] sm:w-[85vw] sm:max-w-[85vw] md:w-[80vw] md:max-w-[80vw] lg:w-[75vw] lg:max-w-[75vw] xl:w-[70vw] xl:max-w-[70vw] h-[93vh] max-h-[93vh] p-6 gap-4 bg-background/80 backdrop-blur-sm border-border/50 overflow-y-auto"
+        className="w-[95vw] max-w-[95vw] sm:w-[90vw] sm:max-w-[90vw] md:w-[85vw] md:max-w-[85vw] lg:w-[80vw] lg:max-w-[80vw] xl:w-[75vw] xl:max-w-[75vw] h-[90vh] max-h-[90vh] p-4 sm:p-6 gap-4 bg-background/95 backdrop-blur-md border-border/50 overflow-y-auto"
         showCloseButton={true}
       >
-        <DialogHeader>
-          <DialogTitle className="text-2xl flex items-center gap-2">
-            <IconPackage className="h-6 w-6 text-primary" />
+        <DialogHeader className="space-y-2">
+          <DialogTitle className="text-xl sm:text-2xl flex items-center gap-2">
+            <IconPackage className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
             {isEditing ? "Edit Finished Product" : "Add New Finished Product"}
           </DialogTitle>
-          <DialogDescription>
+          <DialogDescription className="text-xs sm:text-sm">
             {isEditing 
               ? "Update the product details below." 
               : "Enter the details of your finished product. Click save when you're done."}
           </DialogDescription>
         </DialogHeader>
 
-        <div className="grid gap-4 py-4">
+        <div className="space-y-4 sm:space-y-6 py-2 sm:py-4">
           {/* Basic Information */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>Product Name *</Label>
-              <Input
-                name="name"
-                value={formData.name}
-                onChange={handleInputChange}
-                placeholder="e.g., Premium Headphones"
-                className="bg-background/40 backdrop-blur-sm"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Batch Number</Label>
-              <Input
-                name="batchNumber"
-                value={formData.batchNumber}
-                onChange={handleInputChange}
-                placeholder="e.g., BATCH-2024-001"
-                className="bg-background/40 backdrop-blur-sm"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Category *</Label>
-              <Select
-                value={formData.category}
-                onValueChange={(value) => handleSelectChange("category", value)}
-              >
-                <SelectTrigger className="bg-background/40 backdrop-blur-sm">
-                  <SelectValue placeholder="Select category" />
-                </SelectTrigger>
-                <SelectContent>
-                  {categories?.map((cat) => (
-                    <SelectItem key={cat.id || cat} value={cat.name || cat}>
-                      {cat.name || cat}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>Unit</Label>
-              <Input
-                name="unit"
-                value={formData.unit}
-                onChange={handleInputChange}
-                placeholder="pcs, kg, etc."
-                className="bg-background/40 backdrop-blur-sm"
-              />
+          <div className="space-y-3">
+            <h3 className="text-xs sm:text-sm font-semibold text-foreground flex items-center gap-2 border-b pb-2">
+              <IconPackage className="h-3 w-3 sm:h-4 sm:w-4" />
+              Basic Information
+            </h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+              <div className="space-y-1 sm:space-y-2">
+                <Label className="text-xs sm:text-sm">Product Name *</Label>
+                <Input
+                  name="name"
+                  value={formData.name}
+                  onChange={handleInputChange}
+                  placeholder="e.g., Premium Headphones"
+                  className="h-10 sm:h-11 bg-background/50"
+                />
+              </div>
+              <div className="space-y-1 sm:space-y-2">
+                <Label className="text-xs sm:text-sm">Batch Number</Label>
+                <Input
+                  name="batchNumber"
+                  value={formData.batchNumber}
+                  onChange={handleInputChange}
+                  placeholder="e.g., BATCH-2024-001"
+                  className="h-10 sm:h-11 bg-background/50"
+                />
+              </div>
+              <div className="space-y-1 sm:space-y-2">
+                <Label className="text-xs sm:text-sm">Category *</Label>
+                <Select
+                  value={formData.category}
+                  onValueChange={(value) => handleSelectChange("category", value)}
+                >
+                  <SelectTrigger className="h-10 sm:h-11 bg-background/50">
+                    <SelectValue placeholder="Select category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {categories?.map((cat) => (
+                      <SelectItem key={cat.id || cat} value={cat.name || cat}>
+                        {cat.name || cat}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1 sm:space-y-2">
+                <Label className="text-xs sm:text-sm">Unit</Label>
+                <Input
+                  name="unit"
+                  value={formData.unit}
+                  onChange={handleInputChange}
+                  placeholder="pcs, kg, etc."
+                  className="h-10 sm:h-11 bg-background/50"
+                />
+              </div>
             </div>
           </div>
 
           {/* Quantity and Pricing */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="space-y-2">
-              <Label>Quantity</Label>
-              <Input
-                name="quantity"
-                type="number"
-                step="0.01"
-                value={formData.quantity}
-                onChange={(e) => handleNumberChange("quantity", e.target.value)}
-                className="bg-background/40 backdrop-blur-sm"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Cost Price (USD)</Label>
-              <Input
-                name="costPrice"
-                type="number"
-                step="0.01"
-                value={formData.costPrice}
-                onChange={(e) => handleNumberChange("costPrice", e.target.value)}
-                className="bg-background/40 backdrop-blur-sm"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Selling Price (USD)</Label>
-              <Input
-                name="sellingPrice"
-                type="number"
-                step="0.01"
-                value={formData.sellingPrice}
-                onChange={(e) => handleNumberChange("sellingPrice", e.target.value)}
-                className="bg-background/40 backdrop-blur-sm"
-              />
+          <div className="space-y-3">
+            <h3 className="text-xs sm:text-sm font-semibold text-foreground flex items-center gap-2 border-b pb-2">
+              <IconCurrencyDollar className="h-3 w-3 sm:h-4 sm:w-4" />
+              Quantity & Pricing
+            </h3>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+              <div className="space-y-1 sm:space-y-2">
+                <Label className="text-xs sm:text-sm">Quantity</Label>
+                <Input
+                  name="quantity"
+                  type="number"
+                  step="0.01"
+                  value={formData.quantity}
+                  onChange={(e) => handleNumberChange("quantity", e.target.value)}
+                  className="h-10 sm:h-11 bg-background/50"
+                />
+              </div>
+              <div className="space-y-1 sm:space-y-2">
+                <Label className="text-xs sm:text-sm">Cost Price (USD)</Label>
+                <Input
+                  name="costPrice"
+                  type="number"
+                  step="0.01"
+                  value={formData.costPrice}
+                  onChange={(e) => handleNumberChange("costPrice", e.target.value)}
+                  className="h-10 sm:h-11 bg-background/50"
+                />
+              </div>
+              <div className="space-y-1 sm:space-y-2">
+                <Label className="text-xs sm:text-sm">Selling Price (USD)</Label>
+                <Input
+                  name="sellingPrice"
+                  type="number"
+                  step="0.01"
+                  value={formData.sellingPrice}
+                  onChange={(e) => handleNumberChange("sellingPrice", e.target.value)}
+                  className="h-10 sm:h-11 bg-background/50"
+                />
+              </div>
             </div>
           </div>
 
           {/* Quality Grade and Testing Status */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>Quality Grade</Label>
-              <Select
-                value={formData.qualityGrade}
-                onValueChange={(value) => handleSelectChange("qualityGrade", value)}
-              >
-                <SelectTrigger className="bg-background/40 backdrop-blur-sm">
-                  <SelectValue>
-                    <div className="flex items-center gap-2">
-                      {getQualityIcon(formData.qualityGrade)}
-                      <span>{formData.qualityGrade}</span>
-                    </div>
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  {qualityGradeOptions.map((option) => {
-                    const Icon = option.icon;
-                    return (
+          <div className="space-y-3">
+            <h3 className="text-xs sm:text-sm font-semibold text-foreground flex items-center gap-2 border-b pb-2">
+              <IconAward className="h-3 w-3 sm:h-4 sm:w-4" />
+              Quality & Testing
+            </h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+              <div className="space-y-1 sm:space-y-2">
+                <Label className="text-xs sm:text-sm">Quality Grade</Label>
+                <Select
+                  value={formData.qualityGrade}
+                  onValueChange={(value) => handleSelectChange("qualityGrade", value)}
+                >
+                  <SelectTrigger className="h-10 sm:h-11 bg-background/50">
+                    <SelectValue>
+                      <div className="flex items-center gap-2">
+                        {getQualityIcon(formData.qualityGrade)}
+                        <span>{qualityGradeOptions.find(g => g.value === formData.qualityGrade)?.label || formData.qualityGrade}</span>
+                      </div>
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    {qualityGradeOptions.map((option) => {
+                      const Icon = option.icon;
+                      return (
+                        <SelectItem key={option.value} value={option.value}>
+                          <div className="flex items-center gap-2">
+                            <Icon className={`h-4 w-4 ${option.color}`} />
+                            <span>{option.label}</span>
+                          </div>
+                        </SelectItem>
+                      );
+                    })}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1 sm:space-y-2">
+                <Label className="text-xs sm:text-sm">Testing Status</Label>
+                <Select
+                  value={formData.testingStatus}
+                  onValueChange={(value) => handleSelectChange("testingStatus", value)}
+                >
+                  <SelectTrigger className="h-10 sm:h-11 bg-background/50">
+                    <SelectValue>
+                      <div className="flex items-center gap-2">
+                        <div className={`h-2 w-2 rounded-full ${
+                          formData.testingStatus === "not_tested" ? "bg-gray-500" :
+                          formData.testingStatus === "in_progress" ? "bg-blue-500" :
+                          formData.testingStatus === "passed" ? "bg-green-500" :
+                          formData.testingStatus === "failed" ? "bg-red-500" :
+                          "bg-orange-500"
+                        }`} />
+                        <span>{testingStatusOptions.find(t => t.value === formData.testingStatus)?.label || "Select status"}</span>
+                      </div>
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    {testingStatusOptions.map((option) => (
                       <SelectItem key={option.value} value={option.value}>
                         <div className="flex items-center gap-2">
-                          <Icon className={`h-4 w-4 ${option.color}`} />
+                          <div className={`h-2 w-2 rounded-full ${
+                            option.value === "not_tested" ? "bg-gray-500" :
+                            option.value === "in_progress" ? "bg-blue-500" :
+                            option.value === "passed" ? "bg-green-500" :
+                            option.value === "failed" ? "bg-red-500" :
+                            "bg-orange-500"
+                          }`} />
                           <span>{option.label}</span>
                         </div>
                       </SelectItem>
-                    );
-                  })}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>Testing Status</Label>
-              <Select
-                value={formData.testingStatus}
-                onValueChange={(value) => handleSelectChange("testingStatus", value)}
-              >
-                <SelectTrigger className="bg-background/40 backdrop-blur-sm">
-                  <SelectValue>
-                    <div className="flex items-center gap-2">
-                      <div className={`h-2 w-2 rounded-full ${
-                        formData.testingStatus === "not_tested" ? "bg-gray-500" :
-                        formData.testingStatus === "in_progress" ? "bg-blue-500" :
-                        formData.testingStatus === "passed" ? "bg-green-500" :
-                        formData.testingStatus === "failed" ? "bg-red-500" :
-                        "bg-orange-500"
-                      }`} />
-                      <span>
-                        {testingStatusOptions.find(t => t.value === formData.testingStatus)?.label || "Select status"}
-                      </span>
-                    </div>
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  {testingStatusOptions.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      <div className="flex items-center gap-2">
-                        <div className={`h-2 w-2 rounded-full ${
-                          option.value === "not_tested" ? "bg-gray-500" :
-                          option.value === "in_progress" ? "bg-blue-500" :
-                          option.value === "passed" ? "bg-green-500" :
-                          option.value === "failed" ? "bg-red-500" :
-                          "bg-orange-500"
-                        }`} />
-                        <span>{option.label}</span>
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </div>
 
           {/* Production Date and Expiry Date */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label className="flex items-center gap-2">
-                <IconCalendar className="h-4 w-4" />
-                Production Date
-              </Label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className={cn(
-                      "w-full justify-start text-left font-normal bg-background/40 backdrop-blur-sm",
-                      !formData.productionDate && "text-muted-foreground"
-                    )}
-                  >
-                    <IconCalendar className="mr-2 h-4 w-4" />
-                    {formData.productionDate ? (
-                      format(formData.productionDate, "dd/MM/yy")
-                    ) : (
-                      <span>DD/MM/YY</span>
-                    )}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0">
-                  <Calendar
-                    mode="single"
-                    selected={formData.productionDate}
-                    onSelect={(date) => handleDateChange("productionDate", date)}
-                    initialFocus
-                  />
-                </PopoverContent>
-              </Popover>
-            </div>
+          <div className="space-y-3">
+            <h3 className="text-xs sm:text-sm font-semibold text-foreground flex items-center gap-2 border-b pb-2">
+              <IconCalendar className="h-3 w-3 sm:h-4 sm:w-4" />
+              Dates
+            </h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+              <div className="space-y-1 sm:space-y-2">
+                <Label className="flex items-center gap-2 text-xs sm:text-sm">
+                  <IconCalendar className="h-3 w-3 sm:h-4 sm:w-4" />
+                  Production Date
+                </Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "w-full justify-start text-left font-normal h-10 sm:h-11 bg-background/50",
+                        !formData.productionDate && "text-muted-foreground"
+                      )}
+                    >
+                      <IconCalendar className="mr-2 h-4 w-4" />
+                      {formData.productionDate ? (
+                        format(formData.productionDate, "dd/MM/yyyy")
+                      ) : (
+                        <span>DD/MM/YYYY</span>
+                      )}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0">
+                    <Calendar
+                      mode="single"
+                      selected={formData.productionDate}
+                      onSelect={(date) => handleDateChange("productionDate", date)}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
 
-            <div className="space-y-2">
-              <Label className="flex items-center gap-2">
-                <IconCalendar className="h-4 w-4" />
-                Expiry Date
-              </Label>
-              <div className="space-y-2">
-                {!formData.noExpiry ? (
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        className={cn(
-                          "w-full justify-start text-left font-normal bg-background/40 backdrop-blur-sm",
-                          !formData.expiryDate && "text-muted-foreground"
-                        )}
-                        disabled={formData.noExpiry}
-                      >
-                        <IconCalendar className="mr-2 h-4 w-4" />
-                        {formData.expiryDate ? (
-                          format(formData.expiryDate, "dd/MM/yy")
-                        ) : (
-                          <span>DD/MM/YY</span>
-                        )}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0">
-                      <Calendar
-                        mode="single"
-                        selected={formData.expiryDate}
-                        onSelect={(date) => handleDateChange("expiryDate", date)}
-                        initialFocus
-                        disabled={(date) => formData.productionDate ? date < formData.productionDate : false}
-                      />
-                    </PopoverContent>
-                  </Popover>
-                ) : (
-                  <Button
-                    variant="outline"
-                    className="w-full justify-start text-left font-normal text-muted-foreground bg-background/40 backdrop-blur-sm"
-                    disabled
-                  >
-                    <IconCalendar className="mr-2 h-4 w-4" />
-                    <span>No expiry</span>
-                  </Button>
-                )}
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="noExpiry"
-                    checked={formData.noExpiry}
-                    onCheckedChange={handleCheckboxChange}
-                  />
-                  <Label htmlFor="noExpiry" className="text-xs cursor-pointer text-muted-foreground">
-                    This product doesn't expire
-                  </Label>
+              <div className="space-y-1 sm:space-y-2">
+                <Label className="flex items-center gap-2 text-xs sm:text-sm">
+                  <IconCalendar className="h-3 w-3 sm:h-4 sm:w-4" />
+                  Expiry Date
+                </Label>
+                <div className="space-y-2">
+                  {!formData.noExpiry ? (
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          className={cn(
+                            "w-full justify-start text-left font-normal h-10 sm:h-11 bg-background/50",
+                            !formData.expiryDate && "text-muted-foreground"
+                          )}
+                          disabled={formData.noExpiry}
+                        >
+                          <IconCalendar className="mr-2 h-4 w-4" />
+                          {formData.expiryDate ? (
+                            format(formData.expiryDate, "dd/MM/yyyy")
+                          ) : (
+                            <span>DD/MM/YYYY</span>
+                          )}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0">
+                        <Calendar
+                          mode="single"
+                          selected={formData.expiryDate}
+                          onSelect={(date) => handleDateChange("expiryDate", date)}
+                          initialFocus
+                          disabled={(date) => formData.productionDate ? date < formData.productionDate : false}
+                        />
+                      </PopoverContent>
+                    </Popover>
+                  ) : (
+                    <Button
+                      variant="outline"
+                      className="w-full justify-start text-left font-normal text-muted-foreground h-10 sm:h-11 bg-background/50"
+                      disabled
+                    >
+                      <IconCalendar className="mr-2 h-4 w-4" />
+                      <span>No expiry</span>
+                    </Button>
+                  )}
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="noExpiry"
+                      checked={formData.noExpiry}
+                      onCheckedChange={handleCheckboxChange}
+                    />
+                    <Label htmlFor="noExpiry" className="text-[10px] sm:text-xs cursor-pointer text-muted-foreground">
+                      This product doesn't expire
+                    </Label>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
 
           {/* Description */}
-          <div className="space-y-2">
-            <Label>Description</Label>
+          <div className="space-y-3">
+            <h3 className="text-xs sm:text-sm font-semibold text-foreground flex items-center gap-2 border-b pb-2">
+              <IconAlertCircle className="h-3 w-3 sm:h-4 sm:w-4" />
+              Description
+            </h3>
             <Textarea
               name="description"
               value={formData.description}
               onChange={handleInputChange}
               placeholder="Product description, features, benefits..."
-              className="bg-background/40 backdrop-blur-sm"
+              className="bg-background/50 resize-none"
               rows={3}
             />
           </div>
         </div>
 
-        <DialogFooter className="mt-4">
-          <Button variant="outline" onClick={handleClose} className="bg-background/80 backdrop-blur-sm" disabled={loading}>
+        <DialogFooter className="gap-2 mt-2">
+          <Button variant="outline" onClick={handleClose} className="cursor-pointer" disabled={loading}>
             Cancel
           </Button>
-          <Button onClick={handleSubmit} disabled={loading}>
+          <Button onClick={handleSubmit} disabled={loading} className="cursor-pointer">
             {loading ? (
               <>
                 <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>

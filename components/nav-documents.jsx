@@ -5,8 +5,9 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { 
   IconReceipt2,
-  IconBolt,
   IconTruckDelivery,
+  IconBolt,
+  IconPackage,
 } from "@tabler/icons-react"
 
 import {
@@ -19,44 +20,41 @@ import {
 } from "@/components/ui/sidebar"
 import { Separator } from "@/components/ui/separator"
 import { cn } from "@/lib/utils"
-import { Inter } from "next/font/google"
-
-const inter = Inter({ subsets: ["latin"] })
 
 export function NavDocuments({ ...props }) {
   const pathname = usePathname()
 
   const secondaryItems = [
     {
-      title: "Income & Expenses",
-      url: "/dashboard/finance",
+      title: "Finance",
+      url: "/finance",
       icon: IconReceipt2,
     },
     {
-      title: "Logistics & Flow",
-      url: "/dashboard/logistics",
+      title: "Logistic & Flow",
+      url: "/flow",
       icon: IconTruckDelivery,
     },
     {
-      title: "Energy Consumption",
-      url: "/dashboard/energy",
+      title: "Products Analytics",
+      url: "/products-analytics",
       icon: IconBolt,
+    },
+    {
+      title: "Storage",
+      url: "/storage",
+      icon: IconPackage,
     },
   ]
 
   return (
     <>
-      {/* Separator at the top to divide from main nav */}
-      <div className="px-4 py-2">
-        <Separator className="opacity-50" />
+      <div className="px-4 py-1">
+        <Separator className="bg-border" />
       </div>
 
       <SidebarGroup {...props} className="py-0">
-        {/* The Title Section */}
-        <SidebarGroupLabel className={cn(
-          inter.className,
-          "text-[11px] uppercase tracking-widest text-zinc-500 font-normal px-2 mb-2"
-        )}>
+        <SidebarGroupLabel className="text-[10px] uppercase tracking-wider text-muted-foreground font-normal px-2 mb-1">
           Reports & Analytics
         </SidebarGroupLabel>
 
@@ -68,20 +66,24 @@ export function NavDocuments({ ...props }) {
                   asChild 
                   isActive={pathname === item.url}
                   tooltip={item.title}
-                  className="hover:bg-zinc-800/50 transition-all duration-200"
+                  className="transition-all duration-200 py-1"
                 >
-                  <Link href={item.url} className="flex items-center gap-3">
+                  <Link href={item.url} className="flex items-center gap-2">
                     <item.icon 
-                      size={18} 
-                      stroke={1.5} 
+                      size={16} 
+                      strokeWidth={1.5} 
                       className={cn(
-                        pathname === item.url ? "text-purple-400" : "text-zinc-500"
+                        "transition-colors",
+                        pathname === item.url 
+                          ? "text-primary" 
+                          : "text-muted-foreground"
                       )} 
                     />
                     <span className={cn(
-                      inter.className,
-                      "text-sm font-normal transition-colors",
-                      pathname === item.url ? "text-purple-400" : "text-zinc-400"
+                      "text-xs font-normal transition-colors",
+                      pathname === item.url 
+                        ? "text-primary" 
+                        : "text-muted-foreground"
                     )}>
                       {item.title}
                     </span>
