@@ -160,7 +160,8 @@ export default function AdminUsersPage() {
 
   const fetchSuppliers = async (adminUid) => {
     try {
-      const suppliersRef = collection(db, "suppliers", adminUid, "list");
+      // Fetch suppliers from root suppliers collection
+      const suppliersRef = collection(db, "suppliers");
       const snapshot = await getDocs(query(suppliersRef, orderBy("createdAt", "desc")));
       setSuppliers(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
     } catch (error) {
@@ -251,10 +252,11 @@ export default function AdminUsersPage() {
     
     setIsProcessing(true);
     try {
-      const suppliersRef = collection(db, "suppliers", currentAdminUser.uid, "list");
+      // Fetch suppliers from root suppliers collection
+      const suppliersRef = collection(db, "suppliers");
       
       if (editingSupplier) {
-        const supplierRef = doc(db, "suppliers", currentAdminUser.uid, "list", editingSupplier.id);
+        const supplierRef = doc(db, "suppliers", editingSupplier.id);
         await updateDoc(supplierRef, {
           ...supplierForm,
           updatedAt: Timestamp.now()
@@ -285,8 +287,7 @@ export default function AdminUsersPage() {
   const handleDeleteSupplier = async (id) => {
     if (!currentAdminUser) return;
     if (confirm("Are you sure you want to delete this supplier?")) {
-      try {
-        const supplierRef = doc(db, "suppliers", currentAdminUser.uid, "list", id);
+      try {\n        const supplierRef = doc(db, "suppliers", id);
         await deleteDoc(supplierRef);
         toast.success("Supplier deleted successfully");
         fetchSuppliers(currentAdminUser.uid);

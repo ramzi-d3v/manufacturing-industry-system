@@ -4,7 +4,6 @@ import { Home, Bell, ChevronRight, X, Package, CheckCircle, AlertTriangle, Truck
 import { Separator } from "@/components/ui/separator";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
-import { Inter } from "next/font/google";
 import { usePathname } from "next/navigation";
 import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
@@ -30,10 +29,6 @@ import {
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
 import { ThemeToggle } from "@/components/theme-toggle";
-
-const inter = Inter({
-  subsets: ["latin"],
-});
 
 // Notification types and their icons/colors
 const notificationTypes = {
@@ -167,22 +162,28 @@ export function SiteHeader() {
       limit(10)
     );
     
-    const unsubscribeDefects = onSnapshot(defectsQuery, (snapshot) => {
-      snapshot.docChanges().forEach((change) => {
-        if (change.type === "added") {
-          const defect = change.doc.data();
-          notificationsList.push({
-            id: `defect_${change.doc.id}`,
-            type: "defect_reported",
-            title: "New Defect Reported",
-            message: `${defect.materialName} - ${defect.defectType} (${defect.quantity} ${defect.unit})`,
-            timestamp: defect.createdAt || Timestamp.now(),
-            read: false,
-            link: `/batches/raw-material/defect-report`,
-          });
-        }
-      });
-    });
+    const unsubscribeDefects = onSnapshot(
+      defectsQuery,
+      (snapshot) => {
+        snapshot.docChanges().forEach((change) => {
+          if (change.type === "added") {
+            const defect = change.doc.data();
+            notificationsList.push({
+              id: `defect_${change.doc.id}`,
+              type: "defect_reported",
+              title: "New Defect Reported",
+              message: `${defect.materialName} - ${defect.defectType} (${defect.quantity} ${defect.unit})`,
+              timestamp: defect.createdAt || Timestamp.now(),
+              read: false,
+              link: `/batches/raw-material/defect-report`,
+            });
+          }
+        });
+      },
+      (error) => {
+        console.warn("Defect reports index not created yet:", error.message);
+      }
+    );
 
     // 3. Finished Goods notifications (if you have this collection)
     const finishedGoodsRef = collection(db, "finishedGoods", user.uid, "materials");
@@ -218,24 +219,30 @@ export function SiteHeader() {
       limit(10)
     );
     
-    const unsubscribeEnergy = onSnapshot(energyQuery, (snapshot) => {
-      snapshot.docChanges().forEach((change) => {
-        if (change.type === "added") {
-          const energy = change.doc.data();
-          if (energy.consumption > energy.threshold) {
-            notificationsList.push({
-              id: `energy_${change.doc.id}`,
-              type: "energy_alert",
-              title: "High Energy Consumption",
-              message: `Energy usage exceeded threshold: ${energy.consumption} kWh`,
-              timestamp: energy.timestamp || Timestamp.now(),
-              read: false,
-              link: `/energy`,
-            });
+    const unsubscribeEnergy = onSnapshot(
+      energyQuery,
+      (snapshot) => {
+        snapshot.docChanges().forEach((change) => {
+          if (change.type === "added") {
+            const energy = change.doc.data();
+            if (energy.consumption > energy.threshold) {
+              notificationsList.push({
+                id: `energy_${change.doc.id}`,
+                type: "energy_alert",
+                title: "High Energy Consumption",
+                message: `Energy usage exceeded threshold: ${energy.consumption} kWh`,
+                timestamp: energy.timestamp || Timestamp.now(),
+                read: false,
+                link: `/energy`,
+              });
+            }
           }
-        }
-      });
-    });
+        });
+      },
+      (error) => {
+        console.warn("Energy consumption index not created yet:", error.message);
+      }
+    );
 
     // Combine and sort all notifications
     const combineNotifications = () => {
@@ -314,11 +321,7 @@ export function SiteHeader() {
 
   return (
     <div className="sticky top-0 z-50 w-full px-2">
-      <header className={cn(
-        inter.className,
-        "flex h-14 shrink-0 items-center bg-background/95 backdrop-blur-xl supports-[backdrop-filter]:bg-background/60",
-        "rounded-t-xl shadow-sm"
-      )}>
+      <header className="flex h-14 shrink-0 items-center bg-background/95 backdrop-blur-xl supports-[backdrop-filter]:bg-background/60 rounded-t-xl shadow-sm">
         <div className="flex w-full items-center px-4 lg:px-6">
           <SidebarTrigger className="-ml-1" />
           <Separator orientation="vertical" className="mx-3 h-6" />

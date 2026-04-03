@@ -395,7 +395,8 @@ function MaterialEditor({ material, open, onOpenChange, onSave }) {
       if (!user) return;
 
       try {
-        const suppliersRef = collection(db, "suppliers", user.uid, "list");
+        // Fetch suppliers from root suppliers collection
+        const suppliersRef = collection(db, "suppliers");
         const suppliersSnapshot = await getDocs(suppliersRef);
         const suppliersData = suppliersSnapshot.docs.map(doc => ({
           id: doc.id,

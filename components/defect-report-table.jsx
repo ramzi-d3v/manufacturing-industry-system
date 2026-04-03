@@ -466,7 +466,8 @@ function ReportEditor({ report, open, onOpenChange, onSave }) {
       if (!user) return;
 
       try {
-        const suppliersRef = collection(db, "suppliers", user.uid, "list");
+        // Fetch suppliers from root suppliers collection
+        const suppliersRef = collection(db, "suppliers");
         const suppliersSnap = await getDocs(suppliersRef);
         setSuppliers(suppliersSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
 

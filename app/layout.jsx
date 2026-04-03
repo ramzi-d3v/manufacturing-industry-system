@@ -1,9 +1,7 @@
 // app/layout.jsx
-"use client";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import ComplitePageGuard from "@/container/complitePageGuard";
-import { usePathname } from "next/navigation";
 
 import { Roboto } from 'next/font/google'
 import { Toaster } from "@/components/ui/sonner"

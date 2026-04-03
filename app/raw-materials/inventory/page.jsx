@@ -130,7 +130,7 @@ export default function RawMaterialPage() {
       
       setLoadingSuppliers(true);
       try {
-        const suppliersRef = collection(db, "suppliers", user.uid, "list");
+        const suppliersRef = collection(db, "suppliers");
         const suppliersSnapshot = await getDocs(suppliersRef);
         const suppliersData = suppliersSnapshot.docs.map(doc => ({
           id: doc.id,

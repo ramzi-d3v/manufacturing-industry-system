@@ -38,9 +38,16 @@ import {
   IconAward,
   IconFlag,
   IconPlus,
+  IconBuildingWarehouse,
+  IconTruck,
+  IconMapPin,
+  IconLoader,
 } from "@tabler/icons-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { auth, db } from "@/lib/firebase";
+import { useAuthState } from "react-firebase-hooks/auth";
+import { collection, getDocs, query, limit } from "firebase/firestore";
 
 // Quality grade options
 const qualityGradeOptions = [
@@ -66,7 +73,10 @@ export function FinishedProductPopup({
   product,
   categories,
 }) {
+  const [user] = useAuthState(auth);
   const [loading, setLoading] = useState(false);
+  const [loadingLocations, setLoadingLocations] = useState(false);
+  const [warehouses, setWarehouses] = useState([]);
   const [formData, setFormData] = useState({
     name: "",
     batchNumber: "",
@@ -81,9 +91,43 @@ export function FinishedProductPopup({
     productionDate: null,
     expiryDate: null,
     noExpiry: false,
+    location: "",
+    warehouseId: "",
+    warehouseName: "",
+    shelfLocation: "",
   });
 
   const [isEditing, setIsEditing] = useState(false);
+
+  // Fetch warehouses from Firestore with error handling
+  useEffect(() => {
+    if (!user || !open) return;
+
+    const fetchWarehouses = async () => {
+      setLoadingLocations(true);
+      try {
+        // Fetch warehouses from warehouses/{userId}/list
+        const warehousesRef = collection(db, "warehouses", user.uid, "list");
+        const q = query(warehousesRef, limit(100));
+        const warehousesSnapshot = await getDocs(q);
+        const warehousesData = warehousesSnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }));
+        setWarehouses(warehousesData);
+      } catch (err) {
+        console.error("Error fetching warehouses:", err);
+        if (err.code !== 'failed-precondition') {
+          toast.error("Failed to load warehouses");
+        }
+        setWarehouses([]);
+      } finally {
+        setLoadingLocations(false);
+      }
+    };
+
+    fetchWarehouses();
+  }, [user, open]);
 
   useEffect(() => {
     if (product) {
@@ -101,6 +145,10 @@ export function FinishedProductPopup({
         productionDate: product.productionDate ? new Date(product.productionDate) : null,
         expiryDate: product.expiryDate ? new Date(product.expiryDate) : null,
         noExpiry: product.noExpiry || false,
+        location: product.location || "",
+        warehouseId: product.warehouseId || "",
+        warehouseName: product.warehouseName || "",
+        shelfLocation: product.shelfLocation || "",
       });
       setIsEditing(true);
     } else {
@@ -124,6 +172,10 @@ export function FinishedProductPopup({
       productionDate: null,
       expiryDate: null,
       noExpiry: false,
+      location: "",
+      warehouseId: "",
+      warehouseName: "",
+      shelfLocation: "",
     });
   };
 
@@ -138,6 +190,18 @@ export function FinishedProductPopup({
 
   const handleSelectChange = (name, value) => {
     setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleWarehouseSelect = (warehouseId) => {
+    const selectedWarehouse = warehouses.find(w => w.id === warehouseId);
+    if (selectedWarehouse) {
+      setFormData(prev => ({
+        ...prev,
+        warehouseId: selectedWarehouse.id,
+        warehouseName: selectedWarehouse.name,
+        location: selectedWarehouse.location || selectedWarehouse.address || "",
+      }));
+    }
   };
 
   const handleCheckboxChange = (checked) => {
@@ -161,24 +225,35 @@ export function FinishedProductPopup({
 
     const submitData = {
       name: formData.name,
-      batchNumber: formData.batchNumber,
+      batchNumber: formData.batchNumber || "",
       category: formData.category,
-      unit: formData.unit,
-      quantity: formData.quantity,
-      costPrice: formData.costPrice,
-      sellingPrice: formData.sellingPrice,
+      unit: formData.unit || "pcs",
+      quantity: formData.quantity || 0,
+      costPrice: formData.costPrice || 0,
+      sellingPrice: formData.sellingPrice || 0,
       qualityGrade: formData.qualityGrade,
       testingStatus: formData.testingStatus,
-      description: formData.description,
+      description: formData.description || "",
       productionDate: formData.productionDate ? format(formData.productionDate, "yyyy-MM-dd") : null,
       expiryDate: formData.expiryDate ? format(formData.expiryDate, "yyyy-MM-dd") : null,
       noExpiry: formData.noExpiry,
+      location: formData.location || "",
+      warehouseId: formData.warehouseId || "",
+      warehouseName: formData.warehouseName || "",
+      shelfLocation: formData.shelfLocation || "",
     };
 
-    await onProductAdded(submitData);
-    resetForm();
-    onOpenChange(false);
-    setLoading(false);
+    try {
+      await onProductAdded(submitData);
+      resetForm();
+      onOpenChange(false);
+      toast.success(isEditing ? "Product updated successfully!" : "Product added successfully!");
+    } catch (err) {
+      console.error("Error saving product:", err);
+      toast.error("Failed to save product: " + err.message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleClose = () => {
@@ -213,6 +288,13 @@ export function FinishedProductPopup({
               : "Enter the details of your finished product. Click save when you're done."}
           </DialogDescription>
         </DialogHeader>
+
+        {loadingLocations && (
+          <div className="flex items-center justify-center py-4">
+            <IconLoader className="animate-spin h-5 w-5 text-muted-foreground" />
+            <span className="ml-2 text-sm text-muted-foreground">Loading warehouses...</span>
+          </div>
+        )}
 
         <div className="space-y-4 sm:space-y-6 py-2 sm:py-4">
           {/* Basic Information */}
@@ -268,6 +350,61 @@ export function FinishedProductPopup({
                   onChange={handleInputChange}
                   placeholder="pcs, kg, etc."
                   className="h-10 sm:h-11 bg-background/50"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Warehouse & Location Information */}
+          <div className="space-y-3">
+            <h3 className="text-xs sm:text-sm font-semibold text-foreground flex items-center gap-2 border-b pb-2">
+              <IconBuildingWarehouse className="h-3 w-3 sm:h-4 sm:w-4" />
+              Warehouse & Location
+            </h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+              <div className="space-y-1 sm:space-y-2">
+                <Label className="text-xs sm:text-sm">Select Warehouse</Label>
+                <Select
+                  value={formData.warehouseId}
+                  onValueChange={handleWarehouseSelect}
+                >
+                  <SelectTrigger className="h-10 sm:h-11 bg-background/50">
+                    <SelectValue placeholder={warehouses.length === 0 ? "No warehouses available" : "Select warehouse"} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {warehouses.map((warehouse) => (
+                      <SelectItem key={warehouse.id} value={warehouse.id}>
+                        <div className="flex items-center gap-2">
+                          <IconBuildingWarehouse className="h-3 w-3" />
+                          <span>{warehouse.name}</span>
+                          {warehouse.location && (
+                            <span className="text-xs text-muted-foreground">({warehouse.location})</span>
+                          )}
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1 sm:space-y-2">
+                <Label className="text-xs sm:text-sm">Shelf / Rack Location</Label>
+                <Input
+                  name="shelfLocation"
+                  value={formData.shelfLocation}
+                  onChange={handleInputChange}
+                  placeholder="e.g., A-12, Rack 3, Shelf B"
+                  className="h-10 sm:h-11 bg-background/50"
+                />
+              </div>
+              <div className="space-y-1 sm:space-y-2 sm:col-span-2">
+                <Label className="text-xs sm:text-sm">Warehouse Address / Location</Label>
+                <Input
+                  name="location"
+                  value={formData.location}
+                  onChange={handleInputChange}
+                  placeholder="Auto-filled from warehouse selection"
+                  className="h-10 sm:h-11 bg-background/50"
+                  readOnly
                 />
               </div>
             </div>
@@ -517,7 +654,7 @@ export function FinishedProductPopup({
           <Button onClick={handleSubmit} disabled={loading} className="cursor-pointer">
             {loading ? (
               <>
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                <IconLoader className="mr-2 h-4 w-4 animate-spin" />
                 {isEditing ? "Updating..." : "Saving..."}
               </>
             ) : (

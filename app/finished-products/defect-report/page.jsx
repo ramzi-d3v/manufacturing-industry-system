@@ -66,8 +66,9 @@ import {
   onSnapshot,
   orderBy,
   Timestamp,
+  getDocs,
+  where,
 } from "firebase/firestore";
-// FIXED: Import the correct table component for defect reports
 import { FinishedProductDefectTable } from "@/components/finished-product-defect-table";
 
 // Defect source options
@@ -110,22 +111,30 @@ export default function FinishedProductDefectReportPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [loadingData, setLoadingData] = useState(true);
   const [error, setError] = useState(null);
+  const [finishedProducts, setFinishedProducts] = useState([]);
+  const [suppliers, setSuppliers] = useState([]);
+  const [selectedProduct, setSelectedProduct] = useState(null);
   const [newReport, setNewReport] = useState({
+    productId: "",
     productName: "",
     batchNumber: "",
+    supplierId: "",
+    supplierName: "",
     defectDate: new Date().toISOString().split("T")[0],
     defectSource: "production",
+    defectCategory: "",
     quantity: "",
     unit: "pcs",
     costPerUnit: "",
     sellingPrice: "",
-    description: "",
     riskLevel: "Medium",
+    severity: "Medium",
     status: "Reported",
     actionTaken: "",
     reportedBy: "",
     location: "",
     qualityGrade: "",
+    rootCause: "",
   });
 
   const [stats, setStats] = useState({
@@ -141,7 +150,51 @@ export default function FinishedProductDefectReportPage() {
     highCount: 0,
   });
 
-  // Firestore real-time listener for user's finished product defect reports subcollection
+  // Fetch finished products from Firestore
+  useEffect(() => {
+    if (!user) return;
+
+    const fetchFinishedProducts = async () => {
+      try {
+        const productsRef = collection(db, "finishedProducts", user.uid, "products");
+        const productsSnapshot = await getDocs(productsRef);
+        const productsData = productsSnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }));
+        setFinishedProducts(productsData);
+      } catch (err) {
+        console.error("Error fetching finished products:", err);
+        toast.error("Failed to load finished products");
+      }
+    };
+
+    fetchFinishedProducts();
+  }, [user]);
+
+  // Fetch suppliers
+  useEffect(() => {
+    if (!user) return;
+
+    const fetchSuppliers = async () => {
+      try {
+        // Fetch suppliers from root suppliers collection
+        const suppliersRef = collection(db, "suppliers");
+        const suppliersSnapshot = await getDocs(suppliersRef);
+        const suppliersData = suppliersSnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }));
+        setSuppliers(suppliersData);
+      } catch (err) {
+        console.error("Error fetching suppliers:", err);
+      }
+    };
+
+    fetchSuppliers();
+  }, [user]);
+
+  // Firestore real-time listener with proper index
   useEffect(() => {
     if (!user) {
       setLoadingData(false);
@@ -168,14 +221,66 @@ export default function FinishedProductDefectReportPage() {
       },
       (err) => {
         console.error("Firestore error:", err);
-        setError("Failed to load reports. Please try again.");
+        if (err.code === 'failed-precondition' || err.message.includes('index')) {
+          setError("Please create the required Firestore index. Click the link in the console to create it automatically.");
+          toast.error("Firestore index required. Check console for link.");
+        } else {
+          setError("Failed to load reports. Please try again.");
+          toast.error("Error loading reports");
+        }
         setLoadingData(false);
-        toast.error("Error loading reports");
       }
     );
 
     return () => unsubscribe();
   }, [user]);
+
+  // Handle batch selection - fetch product details from finishedProducts
+  const handleBatchSelect = async (batchNumber) => {
+    if (!batchNumber) {
+      setSelectedProduct(null);
+      setNewReport(prev => ({
+        ...prev,
+        batchNumber: "",
+        productId: "",
+        productName: "",
+        qualityGrade: "",
+        location: "",
+        costPerUnit: "",
+        sellingPrice: "",
+      }));
+      return;
+    }
+
+    try {
+      const productsRef = collection(db, "finishedProducts", user.uid, "products");
+      const q = query(productsRef, where("batchNumber", "==", batchNumber));
+      const querySnapshot = await getDocs(q);
+      
+      if (!querySnapshot.empty) {
+        const product = { id: querySnapshot.docs[0].id, ...querySnapshot.docs[0].data() };
+        setSelectedProduct(product);
+        setNewReport(prev => ({
+          ...prev,
+          productId: product.id,
+          productName: product.name || product.productName || "",
+          batchNumber: product.batchNumber,
+          qualityGrade: product.qualityGrade || "",
+          location: product.location || "",
+          costPerUnit: product.costPerUnit || "",
+          sellingPrice: product.sellingPrice || "",
+          unit: product.unit || "pcs",
+        }));
+        toast.success(`Loaded details for batch: ${batchNumber}`);
+      } else {
+        toast.error("Batch not found in finished products");
+        setSelectedProduct(null);
+      }
+    } catch (err) {
+      console.error("Error fetching batch details:", err);
+      toast.error("Failed to load batch details");
+    }
+  };
 
   // Apply filters, search, and sort
   useEffect(() => {
@@ -195,8 +300,9 @@ export default function FinishedProductDefectReportPage() {
     }
 
     if (riskLevelFilter !== "all") {
-      filtered = filtered.filter(
-        (r) => r.riskLevel?.toLowerCase() === riskLevelFilter.toLowerCase()
+      filtered = filtered.filter((r) => 
+        r.riskLevel?.toLowerCase() === riskLevelFilter.toLowerCase() ||
+        r.severity?.toLowerCase() === riskLevelFilter.toLowerCase()
       );
     }
 
@@ -217,13 +323,13 @@ export default function FinishedProductDefectReportPage() {
     } else if (sortBy === "oldest") {
       filtered.sort((a, b) => new Date(a.defectDate) - new Date(b.defectDate));
     } else if (sortBy === "highest-loss") {
-      filtered.sort((a, b) => b.totalLoss - a.totalLoss);
+      filtered.sort((a, b) => (b.totalLoss || 0) - (a.totalLoss || 0));
     } else if (sortBy === "lowest-loss") {
-      filtered.sort((a, b) => a.totalLoss - b.totalLoss);
+      filtered.sort((a, b) => (a.totalLoss || 0) - (b.totalLoss || 0));
     } else if (sortBy === "riskLevel") {
       const riskWeight = { Critical: 5, High: 4, Medium: 3, Low: 2, Minor: 1 };
       filtered.sort(
-        (a, b) => riskWeight[b.riskLevel] - riskWeight[a.riskLevel]
+        (a, b) => (riskWeight[b.riskLevel] || 0) - (riskWeight[a.riskLevel] || 0)
       );
     }
 
@@ -242,8 +348,12 @@ export default function FinishedProductDefectReportPage() {
       .reduce((sum, r) => sum + (r.totalLoss || 0), 0);
     const resolvedCount = filtered.filter((r) => r.status === "Resolved").length;
     const openCount = filtered.filter((r) => r.status !== "Resolved").length;
-    const criticalCount = filtered.filter((r) => r.riskLevel === "Critical").length;
-    const highCount = filtered.filter((r) => r.riskLevel === "High").length;
+    const criticalCount = filtered.filter((r) => 
+      r.riskLevel === "Critical" || r.severity === "Critical"
+    ).length;
+    const highCount = filtered.filter((r) => 
+      r.riskLevel === "High" || r.severity === "High"
+    ).length;
 
     setStats({
       totalDefects: filtered.length,
@@ -279,9 +389,9 @@ export default function FinishedProductDefectReportPage() {
       r.batchNumber,
       r.defectDate,
       r.defectSource,
-      r.riskLevel,
+      r.riskLevel || r.severity,
       `${r.quantity} ${r.unit}`,
-      `$${r.totalLoss}`,
+      `$${r.totalLoss || 0}`,
       r.status,
       r.actionTaken,
     ]);
@@ -308,43 +418,77 @@ export default function FinishedProductDefectReportPage() {
 
   // Create new report
   const handleSubmitNewReport = async () => {
-  // Validate required fields first
-  if (!newReport.materialId || !newReport.quantity) {
-    toast.error("Please fill in all required fields");
-    return;
-  }
+    if (!newReport.productName || !newReport.quantity) {
+      toast.error("Please fill in all required fields");
+      return;
+    }
 
-  // Create a clean object for Firestore
-  const reportData = {
-    materialId: newReport.materialId || "",
-    materialName: selectedMaterial?.name || "Unknown",
-    supplierId: newReport.supplierId || null,
-    warehouseId: newReport.warehouseId || null,
-    defectDate: newReport.defectDate || new Date().toISOString().split('T')[0],
-    defectType: newReport.defectType || "General",
-    defectSource: newReport.defectSource || "production",
-    risk_level: newReport.risk_level || "low",
-    quantity: parseFloat(newReport.quantity) || 0,
-    unit: newReport.unit || "unit",
-    costPerUnit: parseFloat(newReport.costPerUnit) || 0,
-    totalLoss: (parseFloat(newReport.quantity) || 0) * (parseFloat(newReport.costPerUnit) || 0),
-    description: newReport.description || "",
-    status: newReport.status || "pending",
-    reportedBy: newReport.reportedBy || "System",
-    actionTaken: newReport.actionTaken || "",
-    createdAt: new Date().toISOString(),
+    const quantity = parseFloat(newReport.quantity) || 0;
+    const costPerUnit = parseFloat(newReport.costPerUnit) || 0;
+    const totalLoss = quantity * costPerUnit;
+
+    const reportData = {
+      productId: newReport.productId || "",
+      productName: newReport.productName,
+      batchNumber: newReport.batchNumber || "",
+      supplierId: newReport.supplierId || null,
+      supplierName: newReport.supplierName || "",
+      defectDate: newReport.defectDate || new Date().toISOString().split('T')[0],
+      defectCategory: newReport.defectCategory || "General",
+      defectSource: newReport.defectSource || "production",
+      riskLevel: newReport.riskLevel || newReport.severity || "Medium",
+      severity: newReport.severity || newReport.riskLevel || "Medium",
+      quantity: quantity,
+      unit: newReport.unit || "pcs",
+      costPerUnit: costPerUnit,
+      sellingPrice: parseFloat(newReport.sellingPrice) || 0,
+      totalLoss: totalLoss,
+      status: newReport.status || "Reported",
+      reportedBy: newReport.reportedBy || user?.email || "System",
+      actionTaken: newReport.actionTaken || "",
+      location: newReport.location || "",
+      qualityGrade: newReport.qualityGrade || "",
+      rootCause: newReport.rootCause || "",
+      createdAt: Timestamp.now(),
+      updatedAt: Timestamp.now(),
+      reportedByUserId: user?.uid,
+    };
+
+    try {
+      const userReportsRef = collection(db, "finishedProductDefects", user.uid, "reports");
+      await addDoc(userReportsRef, reportData);
+      setDialogOpen(false);
+      toast.success("Report created successfully");
+      
+      // Reset form
+      setNewReport({
+        productId: "",
+        productName: "",
+        batchNumber: "",
+        supplierId: "",
+        supplierName: "",
+        defectDate: new Date().toISOString().split("T")[0],
+        defectSource: "production",
+        defectCategory: "",
+        quantity: "",
+        unit: "pcs",
+        costPerUnit: "",
+        sellingPrice: "",
+        riskLevel: "Medium",
+        severity: "Medium",
+        status: "Reported",
+        actionTaken: "",
+        reportedBy: "",
+        location: "",
+        qualityGrade: "",
+        rootCause: "",
+      });
+      setSelectedProduct(null);
+    } catch (error) {
+      console.error("Error creating report:", error);
+      toast.error("Failed to create report: " + error.message);
+    }
   };
-
-  try {
-    // Replace with your actual Firebase addDoc logic
-    // await addDoc(collection(db, "defectReports"), reportData);
-    console.log("Saving to Firebase:", reportData);
-    setDialogOpen(false);
-    toast.success("Report created successfully");
-  } catch (error) {
-    toast.error("Firebase Error: Check your indexes or permissions");
-  }
-};
 
   // Update report
   const handleUpdateReport = async (updatedReport) => {
@@ -410,7 +554,17 @@ export default function FinishedProductDefectReportPage() {
                 <CardTitle className="text-destructive">Error</CardTitle>
                 <CardDescription>{error}</CardDescription>
               </CardHeader>
-              <CardContent>
+              <CardContent className="space-y-4">
+                <p className="text-sm text-muted-foreground">
+                  To fix this issue, you need to create a composite index in Firebase Console:
+                </p>
+                <ol className="text-sm text-muted-foreground list-decimal list-inside space-y-1">
+                  <li>Go to Firebase Console → Firestore Database → Indexes</li>
+                  <li>Click "Create Composite Index"</li>
+                  <li>Collection: finishedProductDefects/{{userId}}/reports</li>
+                  <li>Fields: defectDate (Descending)</li>
+                  <li>Click "Create"</li>
+                </ol>
                 <Button onClick={() => window.location.reload()} className="cursor-pointer">
                   <IconRefresh className="mr-2 h-4 w-4" />
                   Retry
@@ -442,56 +596,14 @@ export default function FinishedProductDefectReportPage() {
     );
   }
 
+  // Get unique batch numbers from finished products for dropdown
+  const batchNumbers = finishedProducts
+    .filter(p => p.batchNumber)
+    .map(p => ({ batchNumber: p.batchNumber, product: p }));
+
   // Main UI
   return (
     <>
-      <style jsx global>{`
-        @keyframes pulse-glow-1 {
-          0%, 100% {
-            opacity: 0.4;
-            transform: scale(1);
-          }
-          50% {
-            opacity: 0.8;
-            transform: scale(1.2);
-          }
-        }
-        
-        @keyframes pulse-glow-2 {
-          0%, 100% {
-            opacity: 0.3;
-            transform: scale(1);
-          }
-          50% {
-            opacity: 0.7;
-            transform: scale(1.25);
-          }
-        }
-        
-        @keyframes pulse-glow-3 {
-          0%, 100% {
-            opacity: 0.25;
-            transform: scale(1);
-          }
-          50% {
-            opacity: 0.6;
-            transform: scale(1.2);
-          }
-        }
-        
-        .animate-pulse-glow-1 {
-          animation: pulse-glow-1 4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-        }
-        
-        .animate-pulse-glow-2 {
-          animation: pulse-glow-2 5s cubic-bezier(0.4, 0, 0.6, 1) infinite 0.5s;
-        }
-        
-        .animate-pulse-glow-3 {
-          animation: pulse-glow-3 4.5s cubic-bezier(0.4, 0, 0.6, 1) infinite 1s;
-        }
-      `}</style>
-      
       <SidebarProvider>
         <AppSidebar variant="inset" />
         <SidebarInset>
@@ -541,37 +653,106 @@ export default function FinishedProductDefectReportPage() {
 
                     <form onSubmit={(e) => { e.preventDefault(); handleSubmitNewReport(); }}>
                       <div className="grid gap-6 py-4">
+                        {/* Batch Selection */}
+                        <div className="space-y-3">
+                          <h3 className="text-base font-medium border-b border-border pb-2">Batch Selection</h3>
+                          <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                              <label className="text-sm text-muted-foreground">Select Batch Number</label>
+                              <Select 
+                                value={newReport.batchNumber} 
+                                onValueChange={(value) => {
+                                  handleSelectChange("batchNumber", value);
+                                  handleBatchSelect(value);
+                                }}
+                              >
+                                <SelectTrigger className="cursor-pointer">
+                                  <SelectValue placeholder="Search or select batch" />
+                                </SelectTrigger>
+                                <SelectContent className="max-h-[300px]">
+                                  {batchNumbers.map((item) => (
+                                    <SelectItem key={item.batchNumber} value={item.batchNumber} className="cursor-pointer">
+                                      {item.batchNumber} - {item.product.name || item.product.productName}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div className="space-y-2">
+                              <label className="text-sm text-muted-foreground">Or Enter Manually</label>
+                              <Input 
+                                name="batchNumber" 
+                                value={newReport.batchNumber} 
+                                onChange={handleInputChange}
+                                onBlur={(e) => handleBatchSelect(e.target.value)}
+                                placeholder="Enter batch number" 
+                                className="cursor-text" 
+                              />
+                            </div>
+                          </div>
+                        </div>
+
                         {/* Product Information */}
                         <div className="space-y-3">
                           <h3 className="text-base font-medium border-b border-border pb-2">Product Information</h3>
                           <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
                               <label className="text-sm text-muted-foreground">Product Name *</label>
-                              <Input name="productName" value={newReport.productName} onChange={handleInputChange} placeholder="e.g., Premium Headphones" className="cursor-text" required />
+                              <Input 
+                                name="productName" 
+                                value={newReport.productName} 
+                                onChange={handleInputChange} 
+                                placeholder="e.g., Premium Headphones" 
+                                className="cursor-text" 
+                                required 
+                              />
                             </div>
                             <div className="space-y-2">
-                              <label className="text-sm text-muted-foreground">Batch Number</label>
-                              <Input name="batchNumber" value={newReport.batchNumber} onChange={handleInputChange} placeholder="e.g., BATCH-2024-001" className="cursor-text" />
+                              <label className="text-sm text-muted-foreground">Supplier</label>
+                              <Select 
+                                value={newReport.supplierId} 
+                                onValueChange={(value) => {
+                                  const selectedSupplier = suppliers.find(s => s.id === value);
+                                  handleSelectChange("supplierId", value);
+                                  handleSelectChange("supplierName", selectedSupplier?.name || "");
+                                }}
+                              >
+                                <SelectTrigger className="cursor-pointer">
+                                  <SelectValue placeholder="Select supplier" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="none">None</SelectItem>
+                                  {suppliers.map((supplier) => (
+                                    <SelectItem key={supplier.id} value={supplier.id} className="cursor-pointer">
+                                      {supplier.name}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
                             </div>
                           </div>
                           <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
                               <label className="text-sm text-muted-foreground">Quality Grade</label>
-                              <Select value={newReport.qualityGrade} onValueChange={(value) => handleSelectChange("qualityGrade", value)}>
-                                <SelectTrigger className="cursor-pointer">
-                                  <SelectValue placeholder="Select grade" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="Premium">Premium</SelectItem>
-                                  <SelectItem value="Flagship">Flagship</SelectItem>
-                                  <SelectItem value="Standard">Standard</SelectItem>
-                                  <SelectItem value="Economy">Economy</SelectItem>
-                                </SelectContent>
-                              </Select>
+                              <Input 
+                                name="qualityGrade" 
+                                value={newReport.qualityGrade} 
+                                onChange={handleInputChange} 
+                                placeholder="Auto-loaded from batch" 
+                                className="cursor-text bg-muted/20" 
+                                readOnly={!!selectedProduct}
+                              />
                             </div>
                             <div className="space-y-2">
                               <label className="text-sm text-muted-foreground">Location</label>
-                              <Input name="location" value={newReport.location} onChange={handleInputChange} placeholder="e.g., Warehouse A, Shelf 5" className="cursor-text" />
+                              <Input 
+                                name="location" 
+                                value={newReport.location} 
+                                onChange={handleInputChange} 
+                                placeholder="Auto-loaded from batch" 
+                                className="cursor-text bg-muted/20" 
+                                readOnly={!!selectedProduct}
+                              />
                             </div>
                           </div>
                         </div>
@@ -584,6 +765,29 @@ export default function FinishedProductDefectReportPage() {
                               <label className="text-sm text-muted-foreground">Defect Date</label>
                               <Input name="defectDate" type="date" value={newReport.defectDate} onChange={handleInputChange} className="cursor-text" />
                             </div>
+                            <div className="space-y-2">
+                              <label className="text-sm text-muted-foreground">Defect Category</label>
+                              <Select value={newReport.defectCategory} onValueChange={(value) => handleSelectChange("defectCategory", value)}>
+                                <SelectTrigger className="cursor-pointer">
+                                  <SelectValue placeholder="Select category" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="cosmetic">Cosmetic Defect</SelectItem>
+                                  <SelectItem value="functional">Functional Defect</SelectItem>
+                                  <SelectItem value="packaging">Packaging Issue</SelectItem>
+                                  <SelectItem value="labeling">Labeling Error</SelectItem>
+                                  <SelectItem value="size">Size/Fit Issue</SelectItem>
+                                  <SelectItem value="material">Material Flaw</SelectItem>
+                                  <SelectItem value="assembly">Assembly Issue</SelectItem>
+                                  <SelectItem value="finish">Finish/Coating Defect</SelectItem>
+                                  <SelectItem value="performance">Performance Issue</SelectItem>
+                                  <SelectItem value="safety">Safety Concern</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
                               <label className="text-sm text-muted-foreground">Defect Source</label>
                               <Select value={newReport.defectSource} onValueChange={(value) => handleSelectChange("defectSource", value)}>
@@ -599,12 +803,12 @@ export default function FinishedProductDefectReportPage() {
                                 </SelectContent>
                               </Select>
                             </div>
-                          </div>
-
-                          <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
-                              <label className="text-sm text-muted-foreground">Risk Level</label>
-                              <Select value={newReport.riskLevel} onValueChange={(value) => handleSelectChange("riskLevel", value)}>
+                              <label className="text-sm text-muted-foreground">Risk Level / Severity</label>
+                              <Select value={newReport.riskLevel} onValueChange={(value) => {
+                                handleSelectChange("riskLevel", value);
+                                handleSelectChange("severity", value);
+                              }}>
                                 <SelectTrigger className="cursor-pointer">
                                   <SelectValue placeholder="Select risk level" />
                                 </SelectTrigger>
@@ -617,6 +821,9 @@ export default function FinishedProductDefectReportPage() {
                                 </SelectContent>
                               </Select>
                             </div>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
                               <label className="text-sm text-muted-foreground">Status</label>
                               <Select value={newReport.status} onValueChange={(value) => handleSelectChange("status", value)}>
@@ -632,6 +839,16 @@ export default function FinishedProductDefectReportPage() {
                                 </SelectContent>
                               </Select>
                             </div>
+                            <div className="space-y-2">
+                              <label className="text-sm text-muted-foreground">Reported By</label>
+                              <Input 
+                                name="reportedBy" 
+                                value={newReport.reportedBy || user?.email || ""} 
+                                onChange={handleInputChange} 
+                                placeholder="Your name" 
+                                className="cursor-text" 
+                              />
+                            </div>
                           </div>
                         </div>
 
@@ -641,7 +858,16 @@ export default function FinishedProductDefectReportPage() {
                           <div className="grid grid-cols-4 gap-4">
                             <div className="space-y-2">
                               <label className="text-sm text-muted-foreground">Quantity *</label>
-                              <Input name="quantity" type="number" step="0.01" value={newReport.quantity} onChange={handleInputChange} placeholder="0" className="cursor-text" required />
+                              <Input 
+                                name="quantity" 
+                                type="number" 
+                                step="0.01" 
+                                value={newReport.quantity} 
+                                onChange={handleInputChange} 
+                                placeholder="0" 
+                                className="cursor-text" 
+                                required 
+                              />
                             </div>
                             <div className="space-y-2">
                               <label className="text-sm text-muted-foreground">Unit</label>
@@ -649,31 +875,62 @@ export default function FinishedProductDefectReportPage() {
                             </div>
                             <div className="space-y-2">
                               <label className="text-sm text-muted-foreground">Cost per Unit ($) *</label>
-                              <Input name="costPerUnit" type="number" step="0.01" value={newReport.costPerUnit} onChange={handleInputChange} placeholder="0.00" className="cursor-text" required />
+                              <Input 
+                                name="costPerUnit" 
+                                type="number" 
+                                step="0.01" 
+                                value={newReport.costPerUnit} 
+                                onChange={handleInputChange} 
+                                placeholder="0.00" 
+                                className="cursor-text" 
+                                required 
+                              />
                             </div>
                             <div className="space-y-2">
                               <label className="text-sm text-muted-foreground">Selling Price ($)</label>
-                              <Input name="sellingPrice" type="number" step="0.01" value={newReport.sellingPrice} onChange={handleInputChange} placeholder="0.00" className="cursor-text" />
+                              <Input 
+                                name="sellingPrice" 
+                                type="number" 
+                                step="0.01" 
+                                value={newReport.sellingPrice} 
+                                onChange={handleInputChange} 
+                                placeholder="0.00" 
+                                className="cursor-text" 
+                              />
                             </div>
+                          </div>
+                          <div className="p-3 bg-destructive/10 rounded-lg border border-destructive/20">
+                            <p className="text-xs text-muted-foreground">Calculated Total Loss</p>
+                            <p className="text-lg font-bold text-destructive">
+                              ${((parseFloat(newReport.quantity) || 0) * (parseFloat(newReport.costPerUnit) || 0)).toLocaleString()}
+                            </p>
                           </div>
                         </div>
 
-                        {/* Description */}
+                        {/* Root Cause */}
                         <div className="space-y-3">
-                          <h3 className="text-base font-medium border-b border-border pb-2">Description</h3>
-                          <Textarea name="description" value={newReport.description} onChange={handleInputChange} placeholder="Describe the defect in detail..." className="cursor-text" rows={3} />
+                          <h3 className="text-base font-medium border-b border-border pb-2">Root Cause Analysis</h3>
+                          <Textarea 
+                            name="rootCause" 
+                            value={newReport.rootCause} 
+                            onChange={handleInputChange} 
+                            placeholder="What caused this defect? (e.g., Machine calibration issue, Material quality problem, Operator error)" 
+                            className="cursor-text" 
+                            rows={2} 
+                          />
                         </div>
 
                         {/* Action Taken */}
                         <div className="space-y-3">
                           <h3 className="text-base font-medium border-b border-border pb-2">Action Taken</h3>
-                          <div className="grid grid-cols-2 gap-4">
-                            <div className="space-y-2">
-                              <label className="text-sm text-muted-foreground">Reported By</label>
-                              <Input name="reportedBy" value={newReport.reportedBy} onChange={handleInputChange} placeholder="Your name" className="cursor-text" />
-                            </div>
-                          </div>
-                          <Textarea name="actionTaken" value={newReport.actionTaken} onChange={handleInputChange} placeholder="What action has been taken to resolve this defect?" className="cursor-text" rows={2} />
+                          <Textarea 
+                            name="actionTaken" 
+                            value={newReport.actionTaken} 
+                            onChange={handleInputChange} 
+                            placeholder="What action has been taken to resolve this defect?" 
+                            className="cursor-text" 
+                            rows={2} 
+                          />
                         </div>
                       </div>
 
@@ -694,7 +951,6 @@ export default function FinishedProductDefectReportPage() {
 
             {/* Stats Cards */}
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-6">
-              
               {/* Total Defects Card */}
               <Card className="bg-background/40 backdrop-blur-sm border-border/50 shadow-sm hover:shadow-md transition-all duration-200">
                 <CardHeader className="pb-2">
@@ -839,7 +1095,6 @@ export default function FinishedProductDefectReportPage() {
                   </p>
                 </CardContent>
               </Card>
-
             </div>
 
             {/* Search, Filters, and Sort */}

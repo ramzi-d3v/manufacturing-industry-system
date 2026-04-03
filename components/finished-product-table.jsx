@@ -25,6 +25,7 @@ import {
   IconStar,
   IconAward,
   IconFlag,
+  IconBuildingWarehouse,
 } from "@tabler/icons-react";
 import {
   closestCenter,
@@ -349,6 +350,36 @@ function ProductViewerDialog({ product, open, onOpenChange, onEdit, onDelete }) 
             )}
           </div>
         </div>
+
+        {/* Warehouse & Location Information */}
+        {(product.warehouseName || product.location || product.shelfLocation) && (
+          <div className="mt-6 pt-6 border-t border-border/50 space-y-4">
+            <h4 className="text-sm font-semibold flex items-center gap-2">
+              <IconBuildingWarehouse className="h-4 w-4 text-primary" />
+              Storage Location
+            </h4>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {product.warehouseName && (
+                <div className="p-3 bg-muted/30 rounded-lg">
+                  <p className="text-[10px] text-muted-foreground">Warehouse</p>
+                  <p className="text-sm font-medium">{product.warehouseName}</p>
+                </div>
+              )}
+              {product.location && (
+                <div className="p-3 bg-muted/30 rounded-lg">
+                  <p className="text-[10px] text-muted-foreground">Location</p>
+                  <p className="text-sm font-medium">{product.location}</p>
+                </div>
+              )}
+              {product.shelfLocation && (
+                <div className="p-3 bg-muted/30 rounded-lg sm:col-span-2">
+                  <p className="text-[10px] text-muted-foreground">Shelf/Rack Location</p>
+                  <p className="text-sm font-medium">{product.shelfLocation}</p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         <DialogFooter className="gap-2 mt-4">
           <Button variant="outline" onClick={() => onOpenChange(false)}>

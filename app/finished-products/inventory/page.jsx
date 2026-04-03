@@ -58,7 +58,6 @@ import {
   onSnapshot,
   orderBy,
   Timestamp,
-  where,
 } from "firebase/firestore";
 import { FinishedProductTable } from "@/components/finished-product-table";
 import { FinishedProductPopup } from "@/components/finished-product-popup";
@@ -171,9 +170,10 @@ export default function FinishedProductPage() {
       filtered = filtered.filter(
         (p) =>
           p.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          p.sku?.toLowerCase().includes(searchQuery.toLowerCase()) ||
           p.batchNumber?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          p.category?.toLowerCase().includes(searchQuery.toLowerCase())
+          p.category?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          p.supplierName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          p.warehouseName?.toLowerCase().includes(searchQuery.toLowerCase())
       );
     }
 
@@ -182,41 +182,71 @@ export default function FinishedProductPage() {
       filtered = filtered.filter((p) => p.category === categoryFilter);
     }
 
-    // Apply quality filter
+    // Apply quality filter - using qualityGrade or testingStatus
     if (qualityFilter !== "all") {
-      filtered = filtered.filter((p) => p.qualityStatus === qualityFilter);
+      filtered = filtered.filter((p) => {
+        if (qualityFilter === "Passed") {
+          return p.testingStatus === "passed" || p.qualityGrade === "premium" || p.qualityGrade === "flagship";
+        } else if (qualityFilter === "Failed") {
+          return p.testingStatus === "failed";
+        } else if (qualityFilter === "Pending") {
+          return p.testingStatus === "not_tested" || p.testingStatus === "in_progress";
+        } else if (qualityFilter === "Rework") {
+          return p.testingStatus === "rework";
+        }
+        return true;
+      });
     }
 
     // Apply sorting
     if (sortBy === "newest") {
-      filtered.sort((a, b) => new Date(b.createdAt?.toDate()) - new Date(a.createdAt?.toDate()));
+      filtered.sort((a, b) => {
+        const dateA = a.createdAt?.toDate ? a.createdAt.toDate() : new Date(a.createdAt || 0);
+        const dateB = b.createdAt?.toDate ? b.createdAt.toDate() : new Date(b.createdAt || 0);
+        return dateB - dateA;
+      });
     } else if (sortBy === "oldest") {
-      filtered.sort((a, b) => new Date(a.createdAt?.toDate()) - new Date(b.createdAt?.toDate()));
+      filtered.sort((a, b) => {
+        const dateA = a.createdAt?.toDate ? a.createdAt.toDate() : new Date(a.createdAt || 0);
+        const dateB = b.createdAt?.toDate ? b.createdAt.toDate() : new Date(b.createdAt || 0);
+        return dateA - dateB;
+      });
     } else if (sortBy === "name-asc") {
-      filtered.sort((a, b) => a.name?.localeCompare(b.name));
+      filtered.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
     } else if (sortBy === "name-desc") {
-      filtered.sort((a, b) => b.name?.localeCompare(a.name));
+      filtered.sort((a, b) => (b.name || "").localeCompare(a.name || ""));
     } else if (sortBy === "price-asc") {
       filtered.sort((a, b) => (a.sellingPrice || 0) - (b.sellingPrice || 0));
     } else if (sortBy === "price-desc") {
       filtered.sort((a, b) => (b.sellingPrice || 0) - (a.sellingPrice || 0));
     } else if (sortBy === "stock-asc") {
-      filtered.sort((a, b) => (a.currentStock || 0) - (b.currentStock || 0));
+      filtered.sort((a, b) => (a.quantity || 0) - (b.quantity || 0));
     } else if (sortBy === "stock-desc") {
-      filtered.sort((a, b) => (b.currentStock || 0) - (a.currentStock || 0));
+      filtered.sort((a, b) => (b.quantity || 0) - (a.quantity || 0));
     }
 
     setFilteredProducts(filtered);
 
     // Calculate stats
-    const totalValue = filtered.reduce((sum, p) => sum + ((p.sellingPrice || 0) * (p.currentStock || 0)), 0);
-    const inStockCount = filtered.filter(p => p.currentStock > p.reorderLevel).length;
-    const lowStockCount = filtered.filter(p => p.currentStock <= p.reorderLevel && p.currentStock > 0).length;
-    const outOfStockCount = filtered.filter(p => p.currentStock === 0).length;
-    const totalUnits = filtered.reduce((sum, p) => sum + (p.currentStock || 0), 0);
-    const passedQC = filtered.filter(p => p.qualityStatus === "Passed").length;
-    const failedQC = filtered.filter(p => p.qualityStatus === "Failed").length;
-    const pendingQC = filtered.filter(p => p.qualityStatus === "Pending").length;
+    const totalValue = filtered.reduce((sum, p) => sum + ((p.sellingPrice || 0) * (p.quantity || 0)), 0);
+    const inStockCount = filtered.filter(p => (p.quantity || 0) > 100).length;
+    const lowStockCount = filtered.filter(p => (p.quantity || 0) <= 100 && (p.quantity || 0) > 0).length;
+    const outOfStockCount = filtered.filter(p => (p.quantity || 0) === 0).length;
+    const totalUnits = filtered.reduce((sum, p) => sum + (p.quantity || 0), 0);
+    
+    // Quality stats based on testingStatus and qualityGrade
+    const passedQC = filtered.filter(p => 
+      p.testingStatus === "passed" || 
+      p.qualityGrade === "premium" || 
+      p.qualityGrade === "flagship"
+    ).length;
+    const failedQC = filtered.filter(p => p.testingStatus === "failed").length;
+    const pendingQC = filtered.filter(p => 
+      p.testingStatus === "not_tested" || 
+      p.testingStatus === "in_progress" ||
+      !p.testingStatus
+    ).length;
+    
     const averagePrice = filtered.length > 0 
       ? filtered.reduce((sum, p) => sum + (p.sellingPrice || 0), 0) / filtered.length 
       : 0;
@@ -279,8 +309,9 @@ export default function FinishedProductPage() {
 
     try {
       const productRef = doc(db, "finishedProducts", user.uid, "products", updatedProduct.id);
+      const { id, ...updateData } = updatedProduct;
       await updateDoc(productRef, {
-        ...updatedProduct,
+        ...updateData,
         updatedAt: Timestamp.now(),
       });
       toast.success("Product updated successfully!");
@@ -301,6 +332,12 @@ export default function FinishedProductPage() {
       console.error("Error deleting product:", err);
       toast.error("Failed to delete product: " + err.message);
     }
+  };
+
+  // Open popup for editing
+  const handleEditProduct = (product) => {
+    setEditingProduct(product);
+    setIsPopupOpen(true);
   };
 
   // Open popup for adding new product
@@ -591,7 +628,7 @@ export default function FinishedProductPage() {
                 <div className="flex-1 relative">
                   <IconSearch className="absolute left-3 z-10 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
-                    placeholder="Search by name, SKU, batch number, category..."
+                    placeholder="Search by name, batch, supplier, warehouse..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     className="pl-9 h-10 w-full bg-background/80 backdrop-blur-sm"
@@ -704,7 +741,7 @@ export default function FinishedProductPage() {
                 <CardTitle>Finished Products Inventory</CardTitle>
                 <CardDescription>
                   Manage your finished goods, track quality control, and monitor stock levels.
-                  Click on any product SKU to see detailed information.
+                  Click on any product to see detailed information.
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -712,6 +749,7 @@ export default function FinishedProductPage() {
                   data={filteredProducts}
                   onUpdate={handleUpdateProduct}
                   onDelete={handleDeleteProduct}
+                  onEdit={handleEditProduct}
                   categories={productCategories}
                 />
               </CardContent>

@@ -229,6 +229,9 @@ function DefectViewerDialog({ defect, open, onOpenChange, onEdit, onDelete }) {
               </div>
               <h3 className="font-semibold text-lg mt-2">{defect.productName}</h3>
               <p className="text-sm text-muted-foreground">Batch: {defect.batchNumber || "N/A"}</p>
+              {defect.supplierName && (
+                <p className="text-sm text-muted-foreground">Supplier: {defect.supplierName}</p>
+              )}
               {defect.qualityGrade && (
                 <p className="text-sm text-muted-foreground">Grade: {defect.qualityGrade}</p>
               )}
@@ -240,14 +243,6 @@ function DefectViewerDialog({ defect, open, onOpenChange, onEdit, onDelete }) {
                 Defect Category
               </h4>
               <p className="text-sm">{defect.defectCategory || "N/A"}</p>
-            </div>
-
-            <div className="p-3 bg-background/40 backdrop-blur-sm rounded-lg border border-border/50">
-              <h4 className="text-sm font-medium mb-2 flex items-center gap-2">
-                <IconClipboard className="h-4 w-4" />
-                Description
-              </h4>
-              <p className="text-sm text-muted-foreground">{defect.description || "No description provided"}</p>
             </div>
 
             {defect.rootCause && (
@@ -299,7 +294,7 @@ function DefectViewerDialog({ defect, open, onOpenChange, onEdit, onDelete }) {
                 <p className="text-xs text-muted-foreground">Reported By</p>
                 <p className="text-sm font-medium">{defect.reportedBy}</p>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Reported on: {formatDate(defect.reportDate)}
+                  Reported on: {formatDate(defect.createdAt?.toDate?.() || defect.reportDate)}
                 </p>
               </div>
             )}
@@ -428,6 +423,15 @@ function DefectEditor({ defect, open, onOpenChange, onSave, defectCategories, de
               <Input
                 name="batchNumber"
                 value={formData.batchNumber || ""}
+                onChange={handleChange}
+                className="bg-background/40 backdrop-blur-sm"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Supplier</Label>
+              <Input
+                name="supplierName"
+                value={formData.supplierName || ""}
                 onChange={handleChange}
                 className="bg-background/40 backdrop-blur-sm"
               />
@@ -591,18 +595,6 @@ function DefectEditor({ defect, open, onOpenChange, onSave, defectCategories, de
               onChange={handleChange}
               rows={2}
               placeholder="What caused this defect?"
-              className="bg-background/40 backdrop-blur-sm"
-            />
-          </div>
-
-          {/* Description */}
-          <div className="space-y-2">
-            <Label>Description</Label>
-            <Textarea
-              name="description"
-              value={formData.description || ""}
-              onChange={handleChange}
-              rows={2}
               className="bg-background/40 backdrop-blur-sm"
             />
           </div>

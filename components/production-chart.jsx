@@ -14,12 +14,6 @@ import {
 import { ChartContainer } from "@/components/ui/chart";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import { JetBrains_Mono } from "next/font/google";
-
-const jetBrainsMono = JetBrains_Mono({
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
-});
 
 const chartData = [
   { month: "Jan", desktop: 342 },
@@ -77,7 +71,6 @@ const CustomBar = (props) => {
           style={{
             willChange: "transform, opacity",
           }}
-          className={jetBrainsMono.className}
           key={index}
           initial={{ opacity: 0, y: -10, filter: "blur(3px)" }}
           animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
@@ -108,9 +101,7 @@ export function MonochromeBarChart() {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <span
-            className={cn(jetBrainsMono.className, "text-2xl tracking-tighter")}
-          >
+          <span className="text-2xl tracking-tighter">
             ${activeData ? activeData.desktop : "123"}
           </span>
           <Badge variant="secondary">
