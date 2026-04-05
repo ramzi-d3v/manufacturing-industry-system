@@ -2,8 +2,8 @@
 
 import { TrendingUp } from "lucide-react";
 import { Bar, BarChart, XAxis } from "recharts";
-import React from "react";
-import { AnimatePresence, motion } from "framer-motion"; // Changed to framer-motion for standard compatibility
+import React, { useState, useEffect } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import {
   Card,
   CardContent,
@@ -14,27 +14,25 @@ import {
 import { ChartContainer } from "@/components/ui/chart";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-
-const chartData = [
-  { month: "Jan", desktop: 342 },
-  { month: "Feb", desktop: 876 },
-  { month: "Mar", desktop: 512 },
-  { month: "Apr", desktop: 629 },
-  { month: "May", desktop: 458 },
-  { month: "Jun", desktop: 781 },
-  { month: "Jul", desktop: 394 },
-  { month: "Aug", desktop: 925 },
-  { month: "Sep", desktop: 647 },
-  { month: "Oct", desktop: 532 },
-  { month: "Nov", desktop: 803 },
-  { month: "Dec", desktop: 271 },
-];
+import { auth, db } from "@/lib/firebase";
+import { collection, query, orderBy, onSnapshot } from "firebase/firestore";
 
 const chartConfig = {
   desktop: {
-    label: "Desktop",
+    label: "Production",
     color: "var(--secondary-foreground)",
   },
+};
+
+// Helper to get month name
+const getMonthName = (date) => {
+  return new Date(date).toLocaleDateString("en-US", { month: "short" });
+};
+
+// Helper to get month-year key
+const getMonthKey = (date) => {
+  const d = new Date(date);
+  return `${d.getFullYear()}-${d.getMonth()}`;
 };
 
 const CustomBar = (props) => {
@@ -45,9 +43,7 @@ const CustomBar = (props) => {
   const isActive = index === activeIndex;
   const collapsedWidth = 2;
   
-  // centered bar x-position
   const barX = isActive ? xPos : xPos + (realWidth - collapsedWidth) / 2;
-  // centered text x-position
   const textX = xPos + realWidth / 2;
 
   return (
@@ -91,11 +87,73 @@ const CustomBar = (props) => {
 
 export function MonochromeBarChart() {
   const [activeIndex, setActiveIndex] = React.useState(undefined);
+  const [chartData, setChartData] = useState([
+    { month: "Jan", desktop: 0 },
+    { month: "Feb", desktop: 0 },
+    { month: "Mar", desktop: 0 },
+    { month: "Apr", desktop: 0 },
+    { month: "May", desktop: 0 },
+    { month: "Jun", desktop: 0 },
+    { month: "Jul", desktop: 0 },
+    { month: "Aug", desktop: 0 },
+    { month: "Sep", desktop: 0 },
+    { month: "Oct", desktop: 0 },
+    { month: "Nov", desktop: 0 },
+    { month: "Dec", desktop: 0 },
+  ]);
+
+  useEffect(() => {
+    const user = auth.currentUser;
+    if (!user) return;
+
+    const productsRef = collection(db, "finishedProducts", user.uid, "products");
+    const q = query(productsRef, orderBy("createdAt", "desc"));
+
+    const unsubscribe = onSnapshot(
+      q,
+      (snapshot) => {
+        // Group production by month
+        const monthlyData = {};
+        
+        snapshot.docs.forEach((doc) => {
+          const product = doc.data();
+          const date = product.createdAt?.toDate?.() || new Date(product.createdAt);
+          const monthKey = getMonthKey(date);
+          const quantity = product.quantity || 0;
+          
+          monthlyData[monthKey] = (monthlyData[monthKey] || 0) + quantity;
+        });
+
+        // Build chart data for all 12 months
+        const now = new Date();
+        const currentYear = now.getFullYear();
+        const newChartData = [];
+
+        for (let i = 0; i < 12; i++) {
+          const date = new Date(currentYear, i, 1);
+          const monthKey = getMonthKey(date);
+          const monthName = date.toLocaleDateString("en-US", { month: "short" });
+          
+          newChartData.push({
+            month: monthName,
+            desktop: monthlyData[monthKey] || 0,
+          });
+        }
+
+        setChartData(newChartData);
+      },
+      (err) => {
+        console.error("Error fetching production data:", err);
+      }
+    );
+
+    return () => unsubscribe();
+  }, []);
 
   const activeData = React.useMemo(() => {
     if (activeIndex === undefined) return null;
     return chartData[activeIndex];
-  }, [activeIndex]);
+  }, [activeIndex, chartData]);
 
   return (
     <Card>
