@@ -358,7 +358,7 @@ export default function ProductAnalyticsPage() {
           <div className="flex-1 p-8 flex items-center justify-center">
             <div className="text-center">
               <IconLoader className="animate-spin text-slate-700" size={32} />
-              <p className="mt-2 text-muted-foreground">Loading products...</p>
+          
             </div>
           </div>
         </SidebarInset>
@@ -437,152 +437,10 @@ export default function ProductAnalyticsPage() {
           </div>
 
           {/* Stats Cards with Trends */}
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            {/* Total Products Card */}
-            <Card className="bg-gradient-to-br from-blue-500/10 to-blue-600/5 border-blue-500/20">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                  Total Products
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-baseline gap-2">
-                  <div className="text-3xl font-bold">{stats.totalProducts}</div>
-                  <div className={cn("flex items-center gap-0.5 text-xs", productTrend.color)}>
-                    <ProductTrendIcon className="h-3.5 w-3.5" />
-                    <span>{productTrend.label}</span>
-                  </div>
-                </div>
-                <p className="text-[10px] text-muted-foreground mt-2">
-                  Products in your inventory
-                </p>
-              </CardContent>
-            </Card>
-
-            {/* Total Profit Card */}
-            <Card className="bg-gradient-to-br from-green-500/10 to-green-600/5 border-green-500/20">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                  Total Profit
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-baseline gap-2">
-                  <div className={cn("text-3xl font-bold", stats.totalProfit > 0 ? "text-green-600" : stats.totalProfit < 0 ? "text-red-600" : "")}>
-                    ${stats.totalProfit.toLocaleString()}
-                  </div>
-                  <div className={cn("flex items-center gap-0.5 text-xs", profitTrend.color)}>
-                    <ProfitTrendIcon className="h-3.5 w-3.5" />
-                    <span>{profitTrend.label}</span>
-                  </div>
-                </div>
-                <div className="flex items-center gap-1 mt-2">
-                  <IconTrendingUp className="h-3 w-3 text-green-500" />
-                  <p className="text-[10px] text-muted-foreground">
-                    Average margin: {stats.averageMargin.toFixed(1)}%
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Total Value Card */}
-            <Card className="bg-gradient-to-br from-purple-500/10 to-purple-600/5 border-purple-500/20">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                  Total Value
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-baseline gap-2">
-                  <div className="text-3xl font-bold">${stats.totalValue.toLocaleString()}</div>
-                  <div className={cn("flex items-center gap-0.5 text-xs", valueTrend.color)}>
-                    <ValueTrendIcon className="h-3.5 w-3.5" />
-                    <span>{valueTrend.label}</span>
-                  </div>
-                </div>
-                <p className="text-[10px] text-muted-foreground mt-2">
-                  Total cost: ${stats.totalCost.toLocaleString()}
-                </p>
-              </CardContent>
-            </Card>
-
-            {/* Average Margin Card */}
-            <Card className="bg-gradient-to-br from-amber-500/10 to-amber-600/5 border-amber-500/20">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                  Average Margin
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-baseline gap-2">
-                  <div className="text-3xl font-bold">{stats.averageMargin.toFixed(1)}%</div>
-                  <div className={cn("flex items-center gap-0.5 text-xs", marginTrend.color)}>
-                    <MarginTrendIcon className="h-3.5 w-3.5" />
-                    <span>{marginTrend.label}</span>
-                  </div>
-                </div>
-                <p className="text-[10px] text-muted-foreground mt-2">
-                  <span className={stats.averageMargin > 30 ? "text-green-500" : stats.averageMargin > 15 ? "text-blue-500" : "text-yellow-500"}>
-                    {stats.averageMargin > 30 ? "Excellent" : stats.averageMargin > 15 ? "Good" : "Needs improvement"}
-                  </span>
-                </p>
-              </CardContent>
-            </Card>
-          </div>
+          
 
           {/* Secondary Stats Cards */}
-          <div className="grid gap-4 md:grid-cols-3">
-            <Card className="bg-background/40 backdrop-blur-sm border-border/50">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                  Best Category
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center gap-2">
-                  <IconCategory className="h-5 w-5 text-primary" />
-                  <span className="text-xl font-semibold">{stats.topCategory}</span>
-                </div>
-                <p className="text-[10px] text-muted-foreground mt-2">
-                  Most profitable category
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card className="bg-background/40 backdrop-blur-sm border-border/50">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                  High Profit Products
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center gap-2">
-                  <IconArrowUp className="h-5 w-5 text-green-500" />
-                  <span className="text-xl font-semibold">{stats.highMarginCount}</span>
-                </div>
-                <p className="text-[10px] text-muted-foreground mt-2">
-                  Products with high profit margin
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card className="bg-background/40 backdrop-blur-sm border-border/50">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                  Low Profit Products
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center gap-2">
-                  <IconArrowDown className="h-5 w-5 text-red-500" />
-                  <span className="text-xl font-semibold">{stats.lowMarginCount}</span>
-                </div>
-                <p className="text-[10px] text-muted-foreground mt-2">
-                  Products with low profit margin
-                </p>
-              </CardContent>
-            </Card>
-          </div>
+          
 
           {/* Filters Section */}
           <div className="flex flex-col gap-3">

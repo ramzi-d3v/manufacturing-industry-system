@@ -43,6 +43,10 @@ import {
   IconReceipt,
   IconWallet,
   IconMinus,
+  IconChartPie,
+  IconPercentage,
+  IconArrowUp,
+  IconArrowDown,
 } from "@tabler/icons-react";
 import { toast } from "sonner";
 import { auth, db } from "@/lib/firebase";
@@ -56,6 +60,7 @@ import {
   where,
 } from "firebase/firestore";
 import { format } from "date-fns";
+import { cn } from "@/lib/utils";
 
 // Date range options
 const dateRangeOptions = [
@@ -67,11 +72,35 @@ const dateRangeOptions = [
   { value: "last-year", label: "Last Year" },
 ];
 
-// Helper function to get trend icon and color
+// Helper function to get trend for metrics
 const getTrend = (current, previous) => {
-  if (current > previous) return { icon: IconTrendingUp, color: "text-green-500", label: "Increased" };
-  if (current < previous) return { icon: IconTrendingDown, color: "text-red-500", label: "Decreased" };
-  return { icon: IconMinus, color: "text-gray-500", label: "Stable" };
+  if (current > previous) return { icon: IconArrowUp, color: "text-green-500", label: "Up", percentage: previous > 0 ? ((current - previous) / previous * 100).toFixed(0) : "100" };
+  if (current < previous) return { icon: IconArrowDown, color: "text-red-500", label: "Down", percentage: previous > 0 ? ((previous - current) / previous * 100).toFixed(0) : "0" };
+  return { icon: IconMinus, color: "text-gray-500", label: "Stable", percentage: "0" };
+};
+
+// Helper function to format currency
+const formatCurrency = (value) => {
+  if (value === undefined || value === null) return "$0";
+  if (value >= 1000000) {
+    return `$${(value / 1000000).toFixed(1)}M`;
+  }
+  if (value >= 1000) {
+    return `$${(value / 1000).toFixed(0)}K`;
+  }
+  return `$${value.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+};
+
+// Helper function to format number
+const formatNumber = (value) => {
+  if (value === undefined || value === null) return "0";
+  if (value >= 1000000) {
+    return `${(value / 1000000).toFixed(1)}M`;
+  }
+  if (value >= 1000) {
+    return `${(value / 1000).toFixed(0)}K`;
+  }
+  return value.toLocaleString();
 };
 
 export default function IncomeExpensesPage() {
@@ -387,8 +416,15 @@ export default function IncomeExpensesPage() {
   const ProfitTrendIcon = profitTrend.icon;
   const MarginTrendIcon = marginTrend.icon;
 
+  // Calculate expense distribution percentages
+  const expenseDistribution = {
+    rawMaterials: financials.rawMaterialCost,
+    defectLosses: financials.defectLoss,
+  };
+  const totalExpensesAmount = expenseDistribution.rawMaterials + expenseDistribution.defectLosses;
+
   // Loading states
-  if (loadingAuth) {
+  if (loadingAuth || loadingData) {
     return (
       <SidebarProvider>
         <AppSidebar variant="inset" />
@@ -397,7 +433,7 @@ export default function IncomeExpensesPage() {
           <div className="flex-1 p-8 flex items-center justify-center">
             <div className="text-center">
               <IconLoader className="animate-spin text-slate-700" size={32} />
-              <p className="mt-2 text-muted-foreground">Loading...</p>
+              <p className="mt-2 text-muted-foreground">Loading financial data...</p>
             </div>
           </div>
         </SidebarInset>
@@ -490,193 +526,183 @@ export default function IncomeExpensesPage() {
             </div>
           </div>
 
-          {/* Main Stats Cards with Trend Footers */}
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            {/* Total Income Card */}
-            <Card className="bg-gradient-to-br from-green-500/10 to-green-600/5 border-green-500/20">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                  Total Income
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-green-600">
-                  ${financials.totalIncome.toLocaleString()}
+          {/* Enhanced Summary Header */}
+          <div className="rounded-lg border border-border/50 overflow-hidden bg-background/40 backdrop-blur-sm">
+            <div className="p-4 border-b border-border/50 bg-background/30">
+              {/* Main Metrics Row */}
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-4">
+                {/* Total Income */}
+                <div className="flex flex-col p-2 bg-background/20 rounded-lg">
+                  <div className="flex items-center gap-1 text-muted-foreground mb-1">
+                    <IconTrendingUp className="h-3.5 w-3.5 text-green-500" />
+                    <p className="text-[10px] font-medium uppercase tracking-wider">Total Income</p>
+                  </div>
+                  <div className="flex items-baseline gap-2">
+                    <p className="text-2xl font-bold text-green-600">{formatCurrency(financials.totalIncome)}</p>
+                    <div className={cn("flex items-center gap-0.5 text-[10px]", incomeTrend.color)}>
+                      <IncomeTrendIcon className="h-2.5 w-2.5" />
+                      <span>{incomeTrend.label}</span>
+                      {incomeTrend.percentage !== "0" && (
+                        <span className="text-[9px]">({incomeTrend.percentage}%)</span>
+                      )}
+                    </div>
+                  </div>
+                  <p className="text-[9px] text-muted-foreground mt-1">
+                    From finished products
+                  </p>
                 </div>
-              </CardContent>
-              <CardFooter className="pt-0 flex flex-col items-start">
-                <div className="flex items-center gap-1">
-                  <IncomeTrendIcon className={`h-3 w-3 ${incomeTrend.color}`} />
-                  <span className="text-xs font-medium">{incomeTrend.label}</span>
-                  <span className="text-[10px] text-muted-foreground ml-1">
-                    vs previous period
-                  </span>
-                </div>
-                <p className="text-[10px] text-muted-foreground mt-0.5">
-                  From finished products
-                </p>
-              </CardFooter>
-            </Card>
 
-            {/* Total Expenses Card */}
-            <Card className="bg-gradient-to-br from-red-500/10 to-red-600/5 border-red-500/20">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                  Total Expenses
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-red-600">
-                  ${financials.totalExpenses.toLocaleString()}
+                {/* Total Expenses */}
+                <div className="flex flex-col p-2 bg-background/20 rounded-lg">
+                  <div className="flex items-center gap-1 text-muted-foreground mb-1">
+                    <IconTrendingDown className="h-3.5 w-3.5 text-red-500" />
+                    <p className="text-[10px] font-medium uppercase tracking-wider">Total Expenses</p>
+                  </div>
+                  <div className="flex items-baseline gap-2">
+                    <p className="text-2xl font-bold text-red-600">{formatCurrency(financials.totalExpenses)}</p>
+                    <div className={cn("flex items-center gap-0.5 text-[10px]", expensesTrend.color)}>
+                      <ExpensesTrendIcon className="h-2.5 w-2.5" />
+                      <span>{expensesTrend.label}</span>
+                      {expensesTrend.percentage !== "0" && (
+                        <span className="text-[9px]">({expensesTrend.percentage}%)</span>
+                      )}
+                    </div>
+                  </div>
+                  <p className="text-[9px] text-muted-foreground mt-1">
+                    Raw materials + Defects
+                  </p>
                 </div>
-              </CardContent>
-              <CardFooter className="pt-0 flex flex-col items-start">
-                <div className="flex items-center gap-1">
-                  <ExpensesTrendIcon className={`h-3 w-3 ${expensesTrend.color}`} />
-                  <span className="text-xs font-medium">{expensesTrend.label}</span>
-                  <span className="text-[10px] text-muted-foreground ml-1">
-                    vs previous period
-                  </span>
-                </div>
-                <p className="text-[10px] text-muted-foreground mt-0.5">
-                  Raw materials + Defect losses
-                </p>
-              </CardFooter>
-            </Card>
 
-            {/* Net Profit Card */}
-            <Card className={cn(
-              "bg-gradient-to-br border",
-              isProfitable 
-                ? "from-green-500/10 to-green-600/5 border-green-500/20" 
-                : "from-red-500/10 to-red-600/5 border-red-500/20"
-            )}>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                  Net Profit
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className={cn(
-                  "text-2xl font-bold",
-                  isProfitable ? "text-green-600" : "text-red-600"
-                )}>
-                  ${financials.netProfit.toLocaleString()}
+                {/* Net Profit */}
+                <div className="flex flex-col p-2 bg-background/20 rounded-lg">
+                  <div className="flex items-center gap-1 text-muted-foreground mb-1">
+                    <IconCurrencyDollar className="h-3.5 w-3.5" />
+                    <p className="text-[10px] font-medium uppercase tracking-wider">Net Profit</p>
+                  </div>
+                  <div className="flex items-baseline gap-2">
+                    <p className={cn("text-2xl font-bold", isProfitable ? "text-green-600" : "text-red-600")}>
+                      {formatCurrency(financials.netProfit)}
+                    </p>
+                    <div className={cn("flex items-center gap-0.5 text-[10px]", profitTrend.color)}>
+                      <ProfitTrendIcon className="h-2.5 w-2.5" />
+                      <span>{profitTrend.label}</span>
+                      {profitTrend.percentage !== "0" && (
+                        <span className="text-[9px]">({profitTrend.percentage}%)</span>
+                      )}
+                    </div>
+                  </div>
+                  <p className="text-[9px] text-muted-foreground mt-1">
+                    {isProfitable ? "Profitable period" : "Loss period"}
+                  </p>
                 </div>
-              </CardContent>
-              <CardFooter className="pt-0 flex flex-col items-start">
-                <div className="flex items-center gap-1">
-                  <ProfitTrendIcon className={`h-3 w-3 ${profitTrend.color}`} />
-                  <span className="text-xs font-medium">{profitTrend.label}</span>
-                  <span className="text-[10px] text-muted-foreground ml-1">
-                    vs previous period
-                  </span>
-                </div>
-                <p className="text-[10px] text-muted-foreground mt-0.5">
-                  {isProfitable ? "Profitable period" : "Loss period"}
-                </p>
-              </CardFooter>
-            </Card>
 
-            {/* Profit Margin Card */}
-            <Card className="bg-gradient-to-br from-blue-500/10 to-blue-600/5 border-blue-500/20">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                  Profit Margin
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{financials.profitMargin.toFixed(1)}%</div>
-                <div className="mt-2 h-1.5 w-full bg-muted rounded-full overflow-hidden">
-                  <div 
-                    className={cn(
-                      "h-full rounded-full transition-all duration-500",
-                      financials.profitMargin > 30 ? "bg-green-500" :
-                      financials.profitMargin > 15 ? "bg-blue-500" :
-                      financials.profitMargin > 0 ? "bg-yellow-500" : "bg-red-500"
-                    )}
-                    style={{ width: `${Math.min(Math.max(financials.profitMargin, 0), 100)}%` }}
-                  />
+                {/* Profit Margin */}
+                <div className="flex flex-col p-2 bg-background/20 rounded-lg">
+                  <div className="flex items-center gap-1 text-muted-foreground mb-1">
+                    <IconPercentage className="h-3.5 w-3.5" />
+                    <p className="text-[10px] font-medium uppercase tracking-wider">Profit Margin</p>
+                  </div>
+                  <div className="flex items-baseline gap-2">
+                    <p className="text-2xl font-bold">{financials.profitMargin.toFixed(1)}%</p>
+                    <div className={cn("flex items-center gap-0.5 text-[10px]", marginTrend.color)}>
+                      <MarginTrendIcon className="h-2.5 w-2.5" />
+                      <span>{marginTrend.label}</span>
+                      {marginTrend.percentage !== "0" && (
+                        <span className="text-[9px]">({marginTrend.percentage}%)</span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="mt-1 h-1 w-full bg-muted rounded-full overflow-hidden">
+                    <div 
+                      className={cn(
+                        "h-full rounded-full transition-all duration-500",
+                        financials.profitMargin > 30 ? "bg-green-500" :
+                        financials.profitMargin > 15 ? "bg-blue-500" :
+                        financials.profitMargin > 0 ? "bg-yellow-500" : "bg-red-500"
+                      )}
+                      style={{ width: `${Math.min(Math.max(financials.profitMargin, 0), 100)}%` }}
+                    />
+                  </div>
                 </div>
-              </CardContent>
-              <CardFooter className="pt-0 flex flex-col items-start">
-                <div className="flex items-center gap-1">
-                  <MarginTrendIcon className={`h-3 w-3 ${marginTrend.color}`} />
-                  <span className="text-xs font-medium">{marginTrend.label}</span>
-                  <span className="text-[10px] text-muted-foreground ml-1">
-                    vs previous period
-                  </span>
+
+                {/* ROI */}
+                <div className="flex flex-col p-2 bg-background/20 rounded-lg">
+                  <div className="flex items-center gap-1 text-muted-foreground mb-1">
+                    <IconChartBar className="h-3.5 w-3.5" />
+                    <p className="text-[10px] font-medium uppercase tracking-wider">ROI</p>
+                  </div>
+                  <div className="flex items-baseline gap-2">
+                    <p className={cn("text-2xl font-bold", financials.totalExpenses > 0 && financials.netProfit > 0 ? "text-green-600" : "text-red-600")}>
+                      {financials.totalExpenses > 0 ? ((financials.netProfit / financials.totalExpenses) * 100).toFixed(1) : 0}%
+                    </p>
+                  </div>
+                  <p className="text-[9px] text-muted-foreground mt-1">
+                    Return on investment
+                  </p>
                 </div>
-                <p className="text-[10px] text-muted-foreground mt-0.5">
-                  {financials.profitMargin > 30 ? "Excellent margin" :
-                   financials.profitMargin > 15 ? "Good margin" :
-                   financials.profitMargin > 0 ? "Fair margin" : "Negative margin"}
-                </p>
-              </CardFooter>
-            </Card>
+              </div>
+
+              {/* Expense Distribution */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2 border-t border-border/30">
+                {/* Expense Breakdown */}
+                <div className="flex flex-col gap-1.5">
+                  <div className="flex items-center gap-1.5">
+                    <IconChartPie className="h-3 w-3 text-muted-foreground" />
+                    <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Expense Distribution</p>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <Badge className="bg-blue-500/10 text-blue-600 text-[10px] px-2 py-0.5 gap-1">
+                      <IconPackage className="h-2.5 w-2.5" />
+                      Raw Materials: {formatCurrency(financials.rawMaterialCost)}
+                      <span className="text-[8px] opacity-70">
+                        ({totalExpensesAmount > 0 ? ((financials.rawMaterialCost / totalExpensesAmount) * 100).toFixed(0) : 0}%)
+                      </span>
+                    </Badge>
+                    <Badge className="bg-red-500/10 text-red-600 text-[10px] px-2 py-0.5 gap-1">
+                      <IconBug className="h-2.5 w-2.5" />
+                      Defect Losses: {formatCurrency(financials.defectLoss)}
+                      <span className="text-[8px] opacity-70">
+                        ({totalExpensesAmount > 0 ? ((financials.defectLoss / totalExpensesAmount) * 100).toFixed(0) : 0}%)
+                      </span>
+                    </Badge>
+                  </div>
+                </div>
+
+                {/* Key Metrics */}
+                <div className="flex flex-col gap-1.5">
+                  <div className="flex items-center gap-1.5">
+                    <IconBuildingWarehouse className="h-3 w-3 text-muted-foreground" />
+                    <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Key Metrics</p>
+                  </div>
+                  <div className="flex flex-wrap gap-3">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[9px] text-muted-foreground">Inventory Value:</span>
+                      <span className="text-[10px] font-semibold">{formatCurrency(financials.totalInventoryValue)}</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[9px] text-muted-foreground">Potential Income:</span>
+                      <span className="text-[10px] font-semibold text-blue-600">{formatCurrency(financials.potentialIncome)}</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[9px] text-muted-foreground">Turnover:</span>
+                      <span className="text-[10px] font-semibold">
+                        {financials.totalInventoryValue > 0 ? ((financials.totalIncome / financials.totalInventoryValue) * 100).toFixed(0) : 0}%
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Last updated timestamp */}
+              <div className="flex justify-end mt-2 pt-1 border-t border-border/30">
+                <div className="text-[9px] text-muted-foreground">
+                  Last updated: {new Date().toLocaleDateString()} at {new Date().toLocaleTimeString()}
+                </div>
+              </div>
+            </div>
           </div>
 
-          {/* Secondary Stats Cards */}
-          <div className="grid gap-4 md:grid-cols-3">
-            <Card className="bg-background/40 backdrop-blur-sm border-border/50">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                  Raw Material Cost
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center gap-2">
-                  <IconPackage className="h-5 w-5 text-blue-500" />
-                  <span className="text-xl font-semibold">${financials.rawMaterialCost.toLocaleString()}</span>
-                </div>
-              </CardContent>
-              <CardFooter className="pt-0">
-                <p className="text-[10px] text-muted-foreground">
-                  {((financials.rawMaterialCost / financials.totalExpenses) * 100 || 0).toFixed(0)}% of total expenses
-                </p>
-              </CardFooter>
-            </Card>
-
-            <Card className="bg-background/40 backdrop-blur-sm border-border/50">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                  Defect Losses
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center gap-2">
-                  <IconBug className="h-5 w-5 text-red-500" />
-                  <span className="text-xl font-semibold">${financials.defectLoss.toLocaleString()}</span>
-                </div>
-              </CardContent>
-              <CardFooter className="pt-0">
-                <p className="text-[10px] text-muted-foreground">
-                  {((financials.defectLoss / financials.totalExpenses) * 100 || 0).toFixed(0)}% of total expenses
-                </p>
-              </CardFooter>
-            </Card>
-
-            <Card className="bg-background/40 backdrop-blur-sm border-border/50">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                  Inventory Value
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center gap-2">
-                  <IconBuildingWarehouse className="h-5 w-5 text-purple-500" />
-                  <span className="text-xl font-semibold">${financials.totalInventoryValue.toLocaleString()}</span>
-                </div>
-              </CardContent>
-              <CardFooter className="pt-0">
-                <p className="text-[10px] text-muted-foreground">
-                  Raw materials + Finished products
-                </p>
-              </CardFooter>
-            </Card>
-          </div>
-
-          {/* Detailed Breakdown */}
+          {/* Detailed Breakdown - Expenses & Income */}
           <div className="grid gap-4 md:grid-cols-2">
             {/* Expenses Breakdown */}
             <Card className="bg-background/80 backdrop-blur-sm border-border/50">
@@ -699,7 +725,7 @@ export default function IncomeExpensesPage() {
                             <span>{expense.name}</span>
                           </div>
                           <div className="flex items-center gap-2">
-                            <span className="text-xs font-semibold">${expense.amount.toLocaleString()}</span>
+                            <span className="text-xs font-semibold">{formatCurrency(expense.amount)}</span>
                             <span className="text-[10px] text-muted-foreground">{percentage.toFixed(1)}%</span>
                           </div>
                         </div>
@@ -740,7 +766,7 @@ export default function IncomeExpensesPage() {
                             <span>{income.name}</span>
                           </div>
                           <div className="flex items-center gap-2">
-                            <span className="text-xs font-semibold">${income.amount.toLocaleString()}</span>
+                            <span className="text-xs font-semibold">{formatCurrency(income.amount)}</span>
                             <span className="text-[10px] text-muted-foreground">{percentage.toFixed(1)}%</span>
                           </div>
                         </div>
@@ -772,7 +798,7 @@ export default function IncomeExpensesPage() {
             <CardContent>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 <div className="text-center p-2 rounded-lg bg-muted/30">
-                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Income vs Expenses</p>
+                  <p className="text-[9px] text-muted-foreground uppercase tracking-wider">Income vs Expenses</p>
                   <p className="text-xs font-semibold mt-1">
                     {financials.totalIncome > financials.totalExpenses ? (
                       <span className="text-green-600">Surplus</span>
@@ -780,39 +806,39 @@ export default function IncomeExpensesPage() {
                       <span className="text-red-600">Deficit</span>
                     )}
                   </p>
-                  <p className="text-[10px] text-muted-foreground mt-0.5">
-                    ${Math.abs(financials.totalIncome - financials.totalExpenses).toLocaleString()}
+                  <p className="text-[9px] text-muted-foreground mt-0.5">
+                    {formatCurrency(Math.abs(financials.totalIncome - financials.totalExpenses))}
                   </p>
                 </div>
                 <div className="text-center p-2 rounded-lg bg-muted/30">
-                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Potential Income</p>
+                  <p className="text-[9px] text-muted-foreground uppercase tracking-wider">Potential Income</p>
                   <p className="text-xs font-semibold mt-1 text-blue-600">
-                    ${financials.potentialIncome.toLocaleString()}
+                    {formatCurrency(financials.potentialIncome)}
                   </p>
-                  <p className="text-[10px] text-muted-foreground mt-0.5">
+                  <p className="text-[9px] text-muted-foreground mt-0.5">
                     If all products sold
                   </p>
                 </div>
                 <div className="text-center p-2 rounded-lg bg-muted/30">
-                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Inventory Turnover</p>
+                  <p className="text-[9px] text-muted-foreground uppercase tracking-wider">Inventory Turnover</p>
                   <p className="text-xs font-semibold mt-1">
                     {financials.totalInventoryValue > 0 
                       ? ((financials.totalIncome / financials.totalInventoryValue) * 100).toFixed(0) 
                       : 0}%
                   </p>
-                  <p className="text-[10px] text-muted-foreground mt-0.5">
+                  <p className="text-[9px] text-muted-foreground mt-0.5">
                     Income vs inventory value
                   </p>
                 </div>
                 <div className="text-center p-2 rounded-lg bg-muted/30">
-                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider">ROI</p>
+                  <p className="text-[9px] text-muted-foreground uppercase tracking-wider">Efficiency Ratio</p>
                   <p className="text-xs font-semibold mt-1">
-                    {financials.totalExpenses > 0 
-                      ? ((financials.netProfit / financials.totalExpenses) * 100).toFixed(1) 
+                    {financials.totalIncome > 0 
+                      ? ((financials.totalExpenses / financials.totalIncome) * 100).toFixed(0) 
                       : 0}%
                   </p>
-                  <p className="text-[10px] text-muted-foreground mt-0.5">
-                    Return on investment
+                  <p className="text-[9px] text-muted-foreground mt-0.5">
+                    Expenses per dollar earned
                   </p>
                 </div>
               </div>
@@ -822,8 +848,4 @@ export default function IncomeExpensesPage() {
       </SidebarInset>
     </SidebarProvider>
   );
-}
-
-function cn(...classes) {
-  return classes.filter(Boolean).join(" ");
 }

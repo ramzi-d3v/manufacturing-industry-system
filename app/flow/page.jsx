@@ -43,6 +43,11 @@ import {
   IconCheck,
   IconClock,
   IconChartBar,
+  IconCurrencyDollar,
+  IconPercentage,
+  IconChartPie,
+  IconCategory,
+  IconMinus,
 } from "@tabler/icons-react";
 import { toast } from "sonner";
 import { auth, db } from "@/lib/firebase";
@@ -76,6 +81,30 @@ const productCategories = [
   { id: "food", name: "Food & Beverage" },
   { id: "cosmetics", name: "Cosmetics" },
 ];
+
+// Helper function to format currency
+const formatCurrency = (value) => {
+  if (value === undefined || value === null) return "$0";
+  if (value >= 1000000) {
+    return `$${(value / 1000000).toFixed(1)}M`;
+  }
+  if (value >= 1000) {
+    return `$${(value / 1000).toFixed(0)}K`;
+  }
+  return `$${value.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+};
+
+// Helper function to format number
+const formatNumber = (value) => {
+  if (value === undefined || value === null) return "0";
+  if (value >= 1000000) {
+    return `${(value / 1000000).toFixed(1)}M`;
+  }
+  if (value >= 1000) {
+    return `${(value / 1000).toFixed(0)}K`;
+  }
+  return value.toLocaleString();
+};
 
 export default function LogisticsFlowPage() {
   const [user, loadingAuth] = useAuthState(auth);
@@ -330,6 +359,19 @@ export default function LogisticsFlowPage() {
     );
   }
 
+  // Calculate stock health distribution
+  const materialStockHealth = {
+    inStock: filteredMaterials.filter(m => (m.quantity || 0) > (m.reorderLevel || 5)).length,
+    lowStock: filteredMaterials.filter(m => (m.quantity || 0) > 0 && (m.quantity || 0) <= (m.reorderLevel || 5)).length,
+    outOfStock: filteredMaterials.filter(m => (m.quantity || 0) === 0).length,
+  };
+
+  const productStockHealth = {
+    inStock: filteredProducts.filter(p => (p.quantity || 0) > 10).length,
+    lowStock: filteredProducts.filter(p => (p.quantity || 0) > 0 && (p.quantity || 0) <= 10).length,
+    outOfStock: filteredProducts.filter(p => (p.quantity || 0) === 0).length,
+  };
+
   return (
     <SidebarProvider>
       <AppSidebar variant="inset" />
@@ -350,87 +392,152 @@ export default function LogisticsFlowPage() {
             </div>
           </div>
 
-          {/* Stats Cards */}
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            <Card className="bg-gradient-to-br from-blue-500/10 to-blue-600/5 border-blue-500/20">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                  Raw Materials
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{stats.totalRawMaterials}</div>
-                <div className="flex items-center gap-2 mt-1">
-                  <Badge className="bg-yellow-500/10 text-yellow-600 text-[10px]">
-                    {stats.lowStockMaterials} Low Stock
-                  </Badge>
-                  <Badge className="bg-red-500/10 text-red-600 text-[10px]">
-                    {stats.outOfStockMaterials} Out of Stock
-                  </Badge>
+          {/* Enhanced Summary Header - Similar to Product Analytics */}
+          <div className="rounded-lg border border-border/50 overflow-hidden bg-background/40 backdrop-blur-sm">
+            <div className="p-4 border-b border-border/50 bg-background/30">
+              {/* Main Metrics Row */}
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-4">
+                {/* Raw Materials */}
+                <div className="flex flex-col p-2 bg-background/20 rounded-lg">
+                  <div className="flex items-center gap-1 text-muted-foreground mb-1">
+                    <IconPackage className="h-3.5 w-3.5" />
+                    <p className="text-[10px] font-medium uppercase tracking-wider">Raw Materials</p>
+                  </div>
+                  <div className="flex items-baseline gap-2">
+                    <p className="text-2xl font-bold">{formatNumber(stats.totalRawMaterials)}</p>
+                  </div>
+                  <p className="text-[9px] text-muted-foreground mt-1">
+                    Value: {formatCurrency(stats.totalRawValue)}
+                  </p>
                 </div>
-                <p className="text-[10px] text-muted-foreground mt-2">
-                  Total Value: ${stats.totalRawValue.toLocaleString()}
-                </p>
-              </CardContent>
-            </Card>
 
-            <Card className="bg-gradient-to-br from-green-500/10 to-green-600/5 border-green-500/20">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                  Finished Products
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{stats.totalFinishedProducts}</div>
-                <div className="flex items-center gap-2 mt-1">
-                  <Badge className="bg-yellow-500/10 text-yellow-600 text-[10px]">
-                    {stats.lowStockProducts} Low Stock
-                  </Badge>
-                  <Badge className="bg-red-500/10 text-red-600 text-[10px]">
-                    {stats.outOfStockProducts} Out of Stock
-                  </Badge>
+                {/* Finished Products */}
+                <div className="flex flex-col p-2 bg-background/20 rounded-lg">
+                  <div className="flex items-center gap-1 text-muted-foreground mb-1">
+                    <IconBox className="h-3.5 w-3.5" />
+                    <p className="text-[10px] font-medium uppercase tracking-wider">Finished Goods</p>
+                  </div>
+                  <div className="flex items-baseline gap-2">
+                    <p className="text-2xl font-bold">{formatNumber(stats.totalFinishedProducts)}</p>
+                  </div>
+                  <p className="text-[9px] text-muted-foreground mt-1">
+                    Value: {formatCurrency(stats.totalProductValue)}
+                  </p>
                 </div>
-                <p className="text-[10px] text-muted-foreground mt-2">
-                  Total Value: ${stats.totalProductValue.toLocaleString()}
-                </p>
-              </CardContent>
-            </Card>
 
-            <Card className="bg-gradient-to-br from-purple-500/10 to-purple-600/5 border-purple-500/20">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                  Storage Locations
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{stats.totalLocations}</div>
-                <div className="flex items-center gap-2 mt-1">
-                  <IconLocation className="h-3 w-3 text-muted-foreground" />
-                  <span className="text-xs">Active locations</span>
+                {/* Total Inventory Value */}
+                <div className="flex flex-col p-2 bg-background/20 rounded-lg">
+                  <div className="flex items-center gap-1 text-muted-foreground mb-1">
+                    <IconCurrencyDollar className="h-3.5 w-3.5" />
+                    <p className="text-[10px] font-medium uppercase tracking-wider">Total Value</p>
+                  </div>
+                  <div className="flex items-baseline gap-2">
+                    <p className="text-2xl font-bold text-green-600">
+                      {formatCurrency(stats.totalRawValue + stats.totalProductValue)}
+                    </p>
+                  </div>
+                  <p className="text-[9px] text-muted-foreground mt-1">
+                    Raw + Finished goods
+                  </p>
                 </div>
-                <p className="text-[10px] text-muted-foreground mt-2">
-                  Across warehouse and storage
-                </p>
-              </CardContent>
-            </Card>
 
-            <Card className="bg-gradient-to-br from-amber-500/10 to-amber-600/5 border-amber-500/20">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                  Total Inventory
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{stats.totalRawMaterials + stats.totalFinishedProducts}</div>
-                <div className="flex items-center gap-2 mt-1">
-                  <IconBox className="h-3 w-3 text-muted-foreground" />
-                  <span className="text-xs">Items tracked</span>
+                {/* Storage Locations */}
+                <div className="flex flex-col p-2 bg-background/20 rounded-lg">
+                  <div className="flex items-center gap-1 text-muted-foreground mb-1">
+                    <IconBuildingWarehouse className="h-3.5 w-3.5" />
+                    <p className="text-[10px] font-medium uppercase tracking-wider">Locations</p>
+                  </div>
+                  <div className="flex items-baseline gap-2">
+                    <p className="text-2xl font-bold">{formatNumber(stats.totalLocations)}</p>
+                  </div>
+                  <p className="text-[9px] text-muted-foreground mt-1">
+                    Active storage locations
+                  </p>
                 </div>
-                <p className="text-[10px] text-muted-foreground mt-2">
-                  Raw + Finished goods
-                </p>
-              </CardContent>
-            </Card>
+
+                {/* Total Items */}
+                <div className="flex flex-col p-2 bg-background/20 rounded-lg">
+                  <div className="flex items-center gap-1 text-muted-foreground mb-1">
+                    <IconChartBar className="h-3.5 w-3.5" />
+                    <p className="text-[10px] font-medium uppercase tracking-wider">Total Items</p>
+                  </div>
+                  <div className="flex items-baseline gap-2">
+                    <p className="text-2xl font-bold">{formatNumber(stats.totalRawMaterials + stats.totalFinishedProducts)}</p>
+                  </div>
+                  <p className="text-[9px] text-muted-foreground mt-1">
+                    Batches tracked
+                  </p>
+                </div>
+              </div>
+
+              {/* Stock Health Distribution */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2 border-t border-border/30">
+                {/* Raw Materials Stock Health */}
+                <div className="flex flex-col gap-1.5">
+                  <div className="flex items-center gap-1.5">
+                    <IconChartPie className="h-3 w-3 text-muted-foreground" />
+                    <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Raw Materials Stock Health</p>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <Badge className="bg-green-500/10 text-green-600 text-[10px] px-2 py-0.5 gap-1">
+                      <IconCheck className="h-2.5 w-2.5" />
+                      In Stock: {materialStockHealth.inStock}
+                    </Badge>
+                    <Badge className="bg-yellow-500/10 text-yellow-600 text-[10px] px-2 py-0.5 gap-1">
+                      <IconClock className="h-2.5 w-2.5" />
+                      Low Stock: {materialStockHealth.lowStock}
+                    </Badge>
+                    <Badge className="bg-red-500/10 text-red-600 text-[10px] px-2 py-0.5 gap-1">
+                      <IconX className="h-2.5 w-2.5" />
+                      Out of Stock: {materialStockHealth.outOfStock}
+                    </Badge>
+                  </div>
+                </div>
+
+                {/* Finished Products Stock Health */}
+                <div className="flex flex-col gap-1.5">
+                  <div className="flex items-center gap-1.5">
+                    <IconChartPie className="h-3 w-3 text-muted-foreground" />
+                    <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Finished Goods Stock Health</p>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <Badge className="bg-green-500/10 text-green-600 text-[10px] px-2 py-0.5 gap-1">
+                      <IconCheck className="h-2.5 w-2.5" />
+                      In Stock: {productStockHealth.inStock}
+                    </Badge>
+                    <Badge className="bg-yellow-500/10 text-yellow-600 text-[10px] px-2 py-0.5 gap-1">
+                      <IconClock className="h-2.5 w-2.5" />
+                      Low Stock: {productStockHealth.lowStock}
+                    </Badge>
+                    <Badge className="bg-red-500/10 text-red-600 text-[10px] px-2 py-0.5 gap-1">
+                      <IconX className="h-2.5 w-2.5" />
+                      Out of Stock: {productStockHealth.outOfStock}
+                    </Badge>
+                  </div>
+                </div>
+              </div>
+
+              {/* Flow Visualization Mini */}
+              <div className="mt-3 pt-2 border-t border-border/30">
+                <div className="flex items-center justify-between text-[9px] text-muted-foreground mb-1">
+                  <span>Production Pipeline</span>
+                  <span>{stats.totalRawMaterials} raw → {stats.totalFinishedProducts} finished</span>
+                </div>
+                <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
+                  <div 
+                    className="h-full rounded-full bg-gradient-to-r from-blue-500 to-green-500 transition-all duration-500"
+                    style={{ width: `${stats.totalFinishedProducts / (stats.totalRawMaterials + stats.totalFinishedProducts || 1) * 100}%` }}
+                  />
+                </div>
+              </div>
+
+              {/* Last updated timestamp */}
+              <div className="flex justify-end mt-2 pt-1 border-t border-border/30">
+                <div className="text-[9px] text-muted-foreground">
+                  Last updated: {new Date().toLocaleDateString()} at {new Date().toLocaleTimeString()}
+                </div>
+              </div>
+            </div>
           </div>
 
           {/* Tab Navigation */}
@@ -707,49 +814,6 @@ export default function LogisticsFlowPage() {
               </Card>
             </div>
           )}
-
-          {/* Flow Visualization */}
-          <Card className="bg-background/80 backdrop-blur-sm border-border/50 mt-6">
-            <CardHeader>
-              <CardTitle className="text-sm font-medium">Material Flow</CardTitle>
-              <CardDescription className="text-[10px]">
-                Visual representation of inventory movement
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="text-center p-3 rounded-lg bg-blue-500/10 border border-blue-500/20">
-                  <IconPackage className="h-8 w-8 mx-auto text-blue-500 mb-2" />
-                  <p className="text-xs font-medium">Raw Materials</p>
-                  <p className="text-2xl font-bold text-blue-500">{stats.totalRawMaterials}</p>
-                  <p className="text-[10px] text-muted-foreground">Batches in stock</p>
-                </div>
-                <div className="flex items-center justify-center">
-                  <IconArrowRight className="h-6 w-6 text-muted-foreground" />
-                </div>
-                <div className="text-center p-3 rounded-lg bg-green-500/10 border border-green-500/20">
-                  <IconBox className="h-8 w-8 mx-auto text-green-500 mb-2" />
-                  <p className="text-xs font-medium">Finished Goods</p>
-                  <p className="text-2xl font-bold text-green-500">{stats.totalFinishedProducts}</p>
-                  <p className="text-[10px] text-muted-foreground">Products ready for sale</p>
-                </div>
-              </div>
-              <div className="mt-4 pt-3 border-t border-border/50">
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-muted-foreground">Production Pipeline</span>
-                  <span className="text-muted-foreground">
-                    {stats.totalRawMaterials} raw → {stats.totalFinishedProducts} finished
-                  </span>
-                </div>
-                <div className="mt-2 h-2 w-full bg-muted rounded-full overflow-hidden">
-                  <div 
-                    className="h-full rounded-full bg-gradient-to-r from-blue-500 to-green-500 transition-all duration-500"
-                    style={{ width: `${stats.totalFinishedProducts / (stats.totalRawMaterials + stats.totalFinishedProducts || 1) * 100}%` }}
-                  />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
         </div>
       </SidebarInset>
     </SidebarProvider>
