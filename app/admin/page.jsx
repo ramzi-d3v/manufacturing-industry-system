@@ -38,7 +38,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   Breadcrumb,
@@ -73,7 +73,9 @@ import {
   IconUsers, IconBan, IconChecklist, IconChevronRight, IconHome,
   IconTruck, IconPlus, IconEdit, IconTrash, IconBuildingStore,
   IconChevronLeft, IconChevronsLeft, IconChevronsRight, IconBuildingWarehouse,
-  IconLocation, IconMail, IconPhone, IconMapPin, IconUserCircle
+  IconLocation, IconMail, IconPhone, IconMapPin, IconUserCircle,
+  IconPackage, IconBuildingCommunity, IconUserCheck, IconUserCancel,
+  IconUsersGroup, IconBriefcase, IconCrown, IconStar
 } from "@tabler/icons-react";
 import { toast } from "sonner";
 
@@ -91,9 +93,13 @@ export default function AdminUsersPage() {
   const [selectedUser, setSelectedUser] = useState(null);
   const [declineReason, setDeclineReason] = useState("");
   
-  // Pagination State - 6 items per page
+  // User Filter States
+  const [userStatusFilter, setUserStatusFilter] = useState("all"); // all, approved, declined, pending
+  const [userRoleFilter, setUserRoleFilter] = useState("all"); // all, admin, manager, staff, other
+  
+  // Pagination State - 5 items per page for tables
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 6;
+  const itemsPerPage = 4;
   
   // Suppliers State
   const [suppliers, setSuppliers] = useState([]);
@@ -102,7 +108,14 @@ export default function AdminUsersPage() {
   const [supplierForm, setSupplierForm] = useState({ name: "", contact: "", email: "", phone: "", address: "" });
   const [supplierCurrentPage, setSupplierCurrentPage] = useState(1);
   
-  // Warehouses State - Removed email and description
+  // Distributors State
+  const [distributors, setDistributors] = useState([]);
+  const [distributorDialogOpen, setDistributorDialogOpen] = useState(false);
+  const [editingDistributor, setEditingDistributor] = useState(null);
+  const [distributorForm, setDistributorForm] = useState({ name: "", contact: "", email: "", phone: "", address: "", serviceArea: "" });
+  const [distributorCurrentPage, setDistributorCurrentPage] = useState(1);
+  
+  // Warehouses State
   const [warehouses, setWarehouses] = useState([]);
   const [warehouseDialogOpen, setWarehouseDialogOpen] = useState(false);
   const [editingWarehouse, setEditingWarehouse] = useState(null);
@@ -117,6 +130,14 @@ export default function AdminUsersPage() {
     { value: "bulk", label: "Bulk Storage" },
     { value: "distribution", label: "Distribution Center" },
     { value: "temporary", label: "Temporary Storage" },
+  ];
+  
+  // Role options
+  const roleOptions = [
+    { value: "admin", label: "Admin", icon: IconCrown, color: "text-purple-400" },
+    { value: "manager", label: "Manager", icon: IconBriefcase, color: "text-blue-400" },
+    { value: "staff", label: "Staff", icon: IconUsersGroup, color: "text-green-400" },
+    { value: "other", label: "Other", icon: IconUser, color: "text-slate-400" },
   ];
   
   const router = useRouter();
@@ -134,6 +155,7 @@ export default function AdminUsersPage() {
             setCurrentAdminUser({ uid: user.uid, ...userData });
             fetchUsers();
             fetchSuppliers(user.uid);
+            fetchDistributors(user.uid);
             fetchWarehouses(user.uid);
           } else {
             router.push("/");
@@ -160,12 +182,21 @@ export default function AdminUsersPage() {
 
   const fetchSuppliers = async (adminUid) => {
     try {
-      // Fetch suppliers from root suppliers collection
-      const suppliersRef = collection(db, "suppliers");
+      const suppliersRef = collection(db, "suppliers", adminUid, "list");
       const snapshot = await getDocs(query(suppliersRef, orderBy("createdAt", "desc")));
       setSuppliers(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
     } catch (error) {
       console.error("Error fetching suppliers:", error);
+    }
+  };
+
+  const fetchDistributors = async (adminUid) => {
+    try {
+      const distributorsRef = collection(db, "distributors", adminUid, "list");
+      const snapshot = await getDocs(query(distributorsRef, orderBy("createdAt", "desc")));
+      setDistributors(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    } catch (error) {
+      console.error("Error fetching distributors:", error);
     }
   };
 
@@ -252,11 +283,10 @@ export default function AdminUsersPage() {
     
     setIsProcessing(true);
     try {
-      // Fetch suppliers from root suppliers collection
-      const suppliersRef = collection(db, "suppliers");
+      const suppliersRef = collection(db, "suppliers", currentAdminUser.uid, "list");
       
       if (editingSupplier) {
-        const supplierRef = doc(db, "suppliers", editingSupplier.id);
+        const supplierRef = doc(db, "suppliers", currentAdminUser.uid, "list", editingSupplier.id);
         await updateDoc(supplierRef, {
           ...supplierForm,
           updatedAt: Timestamp.now()
@@ -287,7 +317,8 @@ export default function AdminUsersPage() {
   const handleDeleteSupplier = async (id) => {
     if (!currentAdminUser) return;
     if (confirm("Are you sure you want to delete this supplier?")) {
-      try {\n        const supplierRef = doc(db, "suppliers", id);
+      try {
+        const supplierRef = doc(db, "suppliers", currentAdminUser.uid, "list", id);
         await deleteDoc(supplierRef);
         toast.success("Supplier deleted successfully");
         fetchSuppliers(currentAdminUser.uid);
@@ -298,7 +329,66 @@ export default function AdminUsersPage() {
     }
   };
 
-  // Warehouse Management Functions - Removed email and description
+  // Distributor Management Functions
+  const handleAddDistributor = async () => {
+    if (!distributorForm.name) {
+      toast.error("Distributor name is required");
+      return;
+    }
+    if (!currentAdminUser) {
+      toast.error("Admin user not found");
+      return;
+    }
+    
+    setIsProcessing(true);
+    try {
+      const distributorsRef = collection(db, "distributors", currentAdminUser.uid, "list");
+      
+      if (editingDistributor) {
+        const distributorRef = doc(db, "distributors", currentAdminUser.uid, "list", editingDistributor.id);
+        await updateDoc(distributorRef, {
+          ...distributorForm,
+          updatedAt: Timestamp.now()
+        });
+        toast.success("Distributor updated successfully");
+      } else {
+        await addDoc(distributorsRef, {
+          ...distributorForm,
+          createdAt: Timestamp.now(),
+          updatedAt: Timestamp.now(),
+          createdBy: currentAdminUser.uid
+        });
+        toast.success("Distributor added successfully");
+      }
+      
+      setDistributorDialogOpen(false);
+      setEditingDistributor(null);
+      setDistributorForm({ name: "", contact: "", email: "", phone: "", address: "", serviceArea: "" });
+      fetchDistributors(currentAdminUser.uid);
+    } catch (error) {
+      console.error("Error saving distributor:", error);
+      toast.error("Failed to save distributor: " + error.message);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleDeleteDistributor = async (id) => {
+    if (!currentAdminUser) return;
+    if (confirm("Are you sure you want to delete this distributor?")) {
+      try {
+        const distributorRef = doc(db, "distributors", currentAdminUser.uid, "list", id);
+        await deleteDoc(distributorRef);
+        toast.success("Distributor deleted successfully");
+        fetchDistributors(currentAdminUser.uid);
+      } catch (error) {
+        console.error("Error deleting distributor:", error);
+        toast.error("Failed to delete distributor");
+      }
+    }
+  };
+
+  // Warehouse Management Functions
   const handleAddWarehouse = async () => {
     if (!warehouseForm.name || !warehouseForm.location) {
       toast.error("Warehouse name and location are required");
@@ -356,23 +446,48 @@ export default function AdminUsersPage() {
     }
   };
 
-  // Statistics
-  const stats = useMemo(() => ({
+  // Statistics for filter tabs
+  const stats = {
     total: users.length,
     approved: users.filter(u => u.isApproved && !u.isDeclined).length,
     declined: users.filter(u => u.isDeclined).length,
+    pending: users.filter(u => !u.isApproved && !u.isDeclined).length,
+    admin: users.filter(u => u.role === "admin" && !u.isDeclined).length,
+    manager: users.filter(u => u.role === "manager" && !u.isDeclined).length,
+    staff: users.filter(u => u.role === "staff" && !u.isDeclined).length,
+    other: users.filter(u => u.role === "other" && !u.isDeclined).length,
     suppliers: suppliers.length,
+    distributors: distributors.length,
     warehouses: warehouses.length,
-  }), [users, suppliers, warehouses]);
+  };
 
-  // Filtered and Paginated Users
+  // Filtered Users based on status and role filters
   const filteredUsers = useMemo(() => {
-    return users.filter(user => {
+    let filtered = users;
+    
+    // Apply status filter
+    if (userStatusFilter === "approved") {
+      filtered = filtered.filter(u => u.isApproved && !u.isDeclined);
+    } else if (userStatusFilter === "declined") {
+      filtered = filtered.filter(u => u.isDeclined);
+    } else if (userStatusFilter === "pending") {
+      filtered = filtered.filter(u => !u.isApproved && !u.isDeclined);
+    }
+    
+    // Apply role filter
+    if (userRoleFilter !== "all") {
+      filtered = filtered.filter(u => u.role === userRoleFilter && !u.isDeclined);
+    }
+    
+    // Apply search filter
+    filtered = filtered.filter(user => {
       const nameMatch = (user.firstName || user.name || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
                         (user.email || "").toLowerCase().includes(searchQuery.toLowerCase());
       return nameMatch;
     });
-  }, [users, searchQuery]);
+    
+    return filtered;
+  }, [users, userStatusFilter, userRoleFilter, searchQuery]);
 
   const totalUserPages = Math.ceil(filteredUsers.length / itemsPerPage);
   const paginatedUsers = useMemo(() => {
@@ -395,6 +510,22 @@ export default function AdminUsersPage() {
     return filteredSuppliers.slice(startIndex, startIndex + itemsPerPage);
   }, [filteredSuppliers, supplierCurrentPage]);
 
+  // Filtered and Paginated Distributors
+  const filteredDistributors = useMemo(() => {
+    return distributors.filter(distributor => {
+      return distributor.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+             (distributor.contact || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+             (distributor.email || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+             (distributor.serviceArea || "").toLowerCase().includes(searchQuery.toLowerCase());
+    });
+  }, [distributors, searchQuery]);
+
+  const totalDistributorPages = Math.ceil(filteredDistributors.length / itemsPerPage);
+  const paginatedDistributors = useMemo(() => {
+    const startIndex = (distributorCurrentPage - 1) * itemsPerPage;
+    return filteredDistributors.slice(startIndex, startIndex + itemsPerPage);
+  }, [filteredDistributors, distributorCurrentPage]);
+
   // Filtered and Paginated Warehouses
   const filteredWarehouses = useMemo(() => {
     return warehouses.filter(warehouse => {
@@ -410,12 +541,13 @@ export default function AdminUsersPage() {
     return filteredWarehouses.slice(startIndex, startIndex + itemsPerPage);
   }, [filteredWarehouses, warehouseCurrentPage]);
 
-  // Reset pagination when search changes
+  // Reset pagination when filters change
   useEffect(() => {
     setCurrentPage(1);
     setSupplierCurrentPage(1);
+    setDistributorCurrentPage(1);
     setWarehouseCurrentPage(1);
-  }, [searchQuery]);
+  }, [searchQuery, userStatusFilter, userRoleFilter, activeTab]);
 
   // Pagination Component
   const Pagination = ({ currentPage, totalPages, onPageChange }) => {
@@ -512,24 +644,23 @@ export default function AdminUsersPage() {
         <div>
           <h1 className="text-3xl font-semibold tracking-tight text-white">Admin Dashboard</h1>
           <p className="text-slate-500 text-sm tracking-wide mt-1">
-            Manage users, suppliers, and warehouses
+            Manage users, suppliers, distributors, and warehouses
           </p>
         </div>
 
-        {/* Tab Navigation - Underlined Bottom */}
-        <div className="border-b border-white/10">
-          <div className="flex gap-8">
+        {/* Main Tab Navigation */}
+        <div className="border-b border-white/10 overflow-x-auto">
+          <div className="flex gap-8 min-w-max">
             <button
               onClick={() => {
                 setActiveTab("users");
                 setSearchQuery("");
+                setUserStatusFilter("all");
+                setUserRoleFilter("all");
               }}
-              className={cn(
-                "pb-3 px-1 text-sm font-medium transition-all duration-200 relative",
-                activeTab === "users"
-                  ? "text-white"
-                  : "text-slate-500 hover:text-slate-300"
-              )}
+              className={`pb-3 px-1 text-sm font-medium transition-all duration-200 relative ${
+                activeTab === "users" ? "text-white" : "text-slate-500 hover:text-slate-300"
+              }`}
             >
               <div className="flex items-center gap-2">
                 <IconUsers size={16} />
@@ -548,12 +679,9 @@ export default function AdminUsersPage() {
                 setActiveTab("suppliers");
                 setSearchQuery("");
               }}
-              className={cn(
-                "pb-3 px-1 text-sm font-medium transition-all duration-200 relative",
-                activeTab === "suppliers"
-                  ? "text-white"
-                  : "text-slate-500 hover:text-slate-300"
-              )}
+              className={`pb-3 px-1 text-sm font-medium transition-all duration-200 relative ${
+                activeTab === "suppliers" ? "text-white" : "text-slate-500 hover:text-slate-300"
+              }`}
             >
               <div className="flex items-center gap-2">
                 <IconTruck size={16} />
@@ -569,15 +697,33 @@ export default function AdminUsersPage() {
             
             <button
               onClick={() => {
+                setActiveTab("distributors");
+                setSearchQuery("");
+              }}
+              className={`pb-3 px-1 text-sm font-medium transition-all duration-200 relative ${
+                activeTab === "distributors" ? "text-white" : "text-slate-500 hover:text-slate-300"
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <IconPackage size={16} />
+                Distributors
+                <Badge variant="secondary" className="ml-1 text-[10px] px-1.5 bg-white/10 text-slate-400">
+                  {stats.distributors}
+                </Badge>
+              </div>
+              {activeTab === "distributors" && (
+                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-white rounded-full" />
+              )}
+            </button>
+            
+            <button
+              onClick={() => {
                 setActiveTab("warehouses");
                 setSearchQuery("");
               }}
-              className={cn(
-                "pb-3 px-1 text-sm font-medium transition-all duration-200 relative",
-                activeTab === "warehouses"
-                  ? "text-white"
-                  : "text-slate-500 hover:text-slate-300"
-              )}
+              className={`pb-3 px-1 text-sm font-medium transition-all duration-200 relative ${
+                activeTab === "warehouses" ? "text-white" : "text-slate-500 hover:text-slate-300"
+              }`}
             >
               <div className="flex items-center gap-2">
                 <IconBuildingWarehouse size={16} />
@@ -593,45 +739,122 @@ export default function AdminUsersPage() {
           </div>
         </div>
 
-        {/* Search Bar */}
-        <div className="flex items-center justify-end">
-          <div className="relative w-64">
-            <IconSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600" size={16} />
-            <Input 
-              placeholder={`Search ${activeTab === "users" ? "users" : activeTab === "suppliers" ? "suppliers" : "warehouses"}...`}
-              className="pl-9 bg-white/[0.03] border-white/5 text-sm text-white rounded-xl h-9 focus:ring-1 focus:ring-white/10"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-          </div>
-        </div>
-
         {/* Users Tab Content */}
         {activeTab === "users" && (
           <>
-            {/* Stats Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
-              {[
-                { label: "Total Users", count: stats.total, icon: IconUsers, color: "text-blue-400" },
-                { label: "Approved", count: stats.approved, icon: IconChecklist, color: "text-green-400" },
-                { label: "Declined", count: stats.declined, icon: IconBan, color: "text-red-400" },
-              ].map((card, i) => (
-                <Card key={i} className="bg-white/[0.02] border-white/5 backdrop-blur-md rounded-2xl shadow-xl">
-                  <CardContent className="p-5 flex items-center justify-between">
-                    <div className="space-y-1">
-                      <p className="text-xs uppercase tracking-wider text-slate-500 font-medium">{card.label}</p>
-                      <p className="text-3xl font-bold text-white">{card.count}</p>
-                    </div>
-                    <div className={`p-3 rounded-xl bg-white/[0.03] ${card.color}`}>
-                      <card.icon size={24} />
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+            {/* Status Filter Tabs */}
+            <div className="border-b border-white/5  ">
+              <div className="flex  gap-1">
+                <button
+                  onClick={() => setUserStatusFilter("all")}
+                  className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-all ${
+                    userStatusFilter === "all"
+                      ? "bg-white/5 text-white border-b-2 border-white"
+                      : "text-slate-500 hover:text-slate-300"
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <IconUsers size={14} />
+                    All Users
+                    <Badge className="ml-1 text-[10px] bg-white/10">{stats.total}</Badge>
+                  </div>
+                </button>
+                <button
+                  onClick={() => setUserStatusFilter("approved")}
+                  className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-all ${
+                    userStatusFilter === "approved"
+                      ? "bg-white/5 text-white border-b-2 border-white"
+                      : "text-slate-500 hover:text-slate-300"
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <IconUserCheck size={14} className="text-green-400" />
+                    Approved
+                    <Badge className="ml-1 text-[10px] bg-green-500/20 text-green-400">{stats.approved}</Badge>
+                  </div>
+                </button>
+                <button
+                  onClick={() => setUserStatusFilter("pending")}
+                  className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-all ${
+                    userStatusFilter === "pending"
+                      ? "bg-white/5 text-white border-b-2 border-white"
+                      : "text-slate-500 hover:text-slate-300"
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <IconUser size={14} className="text-yellow-400" />
+                    Pending
+                    <Badge className="ml-1 text-[10px] bg-yellow-500/20 text-yellow-400">{stats.pending}</Badge>
+                  </div>
+                </button>
+                <button
+                  onClick={() => setUserStatusFilter("declined")}
+                  className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-all ${
+                    userStatusFilter === "declined"
+                      ? "bg-white/5 text-white border-b-2 border-white"
+                      : "text-slate-500 hover:text-slate-300"
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <IconUserCancel size={14} className="text-red-400" />
+                    Declined
+                    <Badge className="ml-1 text-[10px] bg-red-500/20 text-red-400">{stats.declined}</Badge>
+                  </div>
+                </button>
+              </div>
             </div>
+
+            
+
 
             {/* Users Table */}
             <Card className="bg-white/[0.01] border-white/5 backdrop-blur-3xl rounded-3xl overflow-hidden shadow-2xl">
+            <div className="flex items-center justify-center gap-4">
+                {/* Search Bar */}
+              <div className="relative w-64">
+                <IconSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600" size={16} />
+                <Input 
+                  placeholder="Search users..."
+                  className="pl-9 bg-white/[0.03] border-white/5 text-sm text-white rounded-xl h-9 focus:ring-1 focus:ring-white/10"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+              </div>
+              {/* Role Filter Pills */}
+            <div className="flex flex-wrap gap-2">
+              <button
+                onClick={() => setUserRoleFilter("all")}
+                className={`px-3 py-1.5 text-xs rounded-full transition-all ${
+                  userRoleFilter === "all"
+                    ? "bg-white/10 text-white"
+                    : "bg-white/5 text-slate-400 hover:text-white"
+                }`}
+              >
+                All Roles
+              </button>
+              {roleOptions.map((role) => {
+                const RoleIcon = role.icon;
+                const roleCount = stats[role.value];
+                return (
+                  <button
+                    key={role.value}
+                    onClick={() => setUserRoleFilter(role.value)}
+                    className={`px-3 py-1.5 text-xs rounded-full transition-all flex items-center gap-1 ${
+                      userRoleFilter === role.value
+                        ? "bg-white/10 text-white"
+                        : "bg-white/5 text-slate-400 hover:text-white"
+                    }`}
+                  >
+                    <RoleIcon size={12} className={role.color} />
+                    {role.label}
+                    <Badge className="ml-1 text-[9px] bg-white/10">
+                      {roleCount || 0}
+                    </Badge>
+                  </button>
+                );
+              })}
+            </div>
+            </div>
               <div className="p-6">
                 <Table>
                   <TableHeader className="bg-white/[0.02]">
@@ -644,76 +867,97 @@ export default function AdminUsersPage() {
                   </TableHeader>
                   <TableBody>
                     {paginatedUsers.length === 0 ? (
-                      <TableRow><TableCell colSpan={4} className="h-40 text-center text-slate-500 text-sm">No matching records</TableCell></TableRow>
+                      <TableRow><TableCell colSpan={4} className="h-40 text-center text-slate-500 text-sm">No users found</TableCell></TableRow>
                     ) : (
-                      paginatedUsers.map((user) => (
-                        <TableRow key={user.uid} className="border-white/5 hover:bg-white/[0.02] transition-colors group">
-                          <TableCell className="py-4 pl-8">
-                            <div className="flex items-center gap-4">
-                              <Avatar className="h-10 w-10 grayscale contrast-125 border border-white/10 rounded-xl">
-                                <AvatarImage src={user.photoURL} />
-                                <AvatarFallback className="bg-slate-900 text-slate-500 text-sm font-bold">
-                                  {(user.firstName?.[0] || user.email?.[0] || "?").toUpperCase()}
-                                </AvatarFallback>
-                              </Avatar>
-                              <div className="flex flex-col">
-                                <span className="text-white text-sm font-medium">
-                                  {user.firstName || user.name || "New Identity"}
-                                </span>
-                                <span className="text-xs text-slate-500">{user.email}</span>
+                      paginatedUsers.map((user) => {
+                        const role = roleOptions.find(r => r.value === user.role) || roleOptions[3];
+                        const RoleIcon = role.icon;
+                        return (
+                          <TableRow key={user.uid} className="border-white/5 hover:bg-white/[0.02] transition-colors group">
+                            <TableCell className="py-4 pl-8">
+                              <div className="flex items-center gap-4">
+                                <Avatar className="h-10 w-10 grayscale contrast-125 border border-white/10 rounded-xl">
+                                  <AvatarImage src={user.photoURL} />
+                                  <AvatarFallback className="bg-slate-900 text-slate-500 text-sm font-bold">
+                                    {(user.firstName?.[0] || user.email?.[0] || "?").toUpperCase()}
+                                  </AvatarFallback>
+                                </Avatar>
+                                <div className="flex flex-col">
+                                  <span className="text-white text-sm font-medium">
+                                    {user.firstName || user.name || "New Identity"}
+                                  </span>
+                                  <span className="text-xs text-slate-500">{user.email}</span>
+                                </div>
                               </div>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <Badge className={`border-none rounded-lg text-xs px-3 py-1 cursor-default font-medium ${user.role === 'admin' ? 'bg-violet-500/10 text-violet-400' : 'bg-slate-500/10 text-slate-400'}`}>
-                              {user.role === 'admin' ? <IconShieldCheck size={12} className="mr-1" /> : <IconUser size={12} className="mr-1" />}
-                              {(user.role || 'user').toUpperCase()}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="text-center">
-                            <div className="flex justify-center">
-                              {user.isDeclined ? (
-                                <div className="flex items-center gap-1.5 text-xs text-red-500/70 border border-red-500/20 bg-red-500/5 px-2 py-1 rounded-md cursor-help" title={user.description}>
-                                  <IconCircleXFilled size={12} /> Declined
-                                </div>
-                              ) : user.isApproved ? (
-                                <div className="flex items-center gap-1.5 text-xs text-green-400/80 font-medium cursor-default">
-                                  <IconCircleCheckFilled size={12} /> Approved
-                                </div>
-                              ) : (
-                                <div className="flex items-center gap-1 text-xs text-slate-500 bg-white/5 px-2 py-1 rounded-md cursor-default">Pending</div>
-                              )}
-                            </div>
-                          </TableCell>
-                          <TableCell className="text-right pr-8">
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="sm" className="h-8 w-8 text-slate-500 hover:text-white rounded-lg cursor-pointer">
-                                  <IconDotsVertical size={18} />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end" className="w-52 bg-[#0c0c0c] border-white/10 text-slate-300 rounded-xl shadow-2xl backdrop-blur-xl">
-                                <DropdownMenuLabel className="text-xs text-slate-600 uppercase tracking-wider p-3">Privileges</DropdownMenuLabel>
-                                <DropdownMenuItem className="text-sm focus:bg-white/5 cursor-pointer py-2" onClick={() => handleUpdateUser(user.uid, { isApproved: !user.isApproved })}>
-                                  {user.isApproved ? "Revoke Access" : "Approve Account"}
-                                </DropdownMenuItem>
-                                <DropdownMenuSeparator className="bg-white/5" />
-                                <DropdownMenuItem className="text-sm focus:bg-white/5 cursor-pointer py-2" onClick={() => handleUpdateUser(user.uid, { role: user.role === 'admin' ? 'user' : 'admin' })}>
-                                  {user.role === 'admin' ? "Demote to User" : "Elevate to Admin"}
-                                </DropdownMenuItem>
-                                {!user.isDeclined && (
-                                  <>
-                                    <DropdownMenuSeparator className="bg-white/5" />
-                                    <DropdownMenuItem className="text-sm focus:bg-red-500/10 text-red-400 cursor-pointer py-2" onClick={() => { setSelectedUser(user); setIsDeclineDialogOpen(true); }}>
-                                      <IconUserX size={14} className="mr-2" /> Deny Access
-                                    </DropdownMenuItem>
-                                  </>
+                            </TableCell>
+                            <TableCell>
+                              <Badge className={`border-none rounded-lg text-xs px-3 py-1 cursor-default font-medium flex items-center gap-1 w-fit ${
+                                user.role === 'admin' ? 'bg-purple-500/10 text-purple-400' :
+                                user.role === 'manager' ? 'bg-blue-500/10 text-blue-400' :
+                                user.role === 'staff' ? 'bg-green-500/10 text-green-400' :
+                                'bg-slate-500/10 text-slate-400'
+                              }`}>
+                                <RoleIcon size={12} />
+                                {(user.role || 'other').toUpperCase()}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="text-center">
+                              <div className="flex justify-center">
+                                {user.isDeclined ? (
+                                  <div className="flex items-center gap-1.5 text-xs text-red-500/70 border border-red-500/20 bg-red-500/5 px-2 py-1 rounded-md cursor-help" title={user.description}>
+                                    <IconCircleXFilled size={12} /> Declined
+                                  </div>
+                                ) : user.isApproved ? (
+                                  <div className="flex items-center gap-1.5 text-xs text-green-400/80 font-medium cursor-default">
+                                    <IconCircleCheckFilled size={12} /> Approved
+                                  </div>
+                                ) : (
+                                  <div className="flex items-center gap-1 text-xs text-yellow-400/80 bg-yellow-500/5 px-2 py-1 rounded-md cursor-default">
+                                    Pending
+                                  </div>
                                 )}
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </TableCell>
-                        </TableRow>
-                      ))
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-right pr-8">
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button variant="ghost" size="sm" className="h-8 w-8 text-slate-500 hover:text-white rounded-lg cursor-pointer">
+                                    <IconDotsVertical size={18} />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" className="w-52 bg-[#0c0c0c] border-white/10 text-slate-300 rounded-xl shadow-2xl backdrop-blur-xl">
+                                  <DropdownMenuLabel className="text-xs text-slate-600 uppercase tracking-wider p-3">Actions</DropdownMenuLabel>
+                                  {!user.isApproved && !user.isDeclined && (
+                                    <DropdownMenuItem className="text-sm focus:bg-white/5 cursor-pointer py-2" onClick={() => handleUpdateUser(user.uid, { isApproved: true })}>
+                                      <IconChecklist size={14} className="mr-2 text-green-400" /> Approve Account
+                                    </DropdownMenuItem>
+                                  )}
+                                  {user.isApproved && !user.isDeclined && (
+                                    <DropdownMenuItem className="text-sm focus:bg-white/5 cursor-pointer py-2" onClick={() => handleUpdateUser(user.uid, { isApproved: false })}>
+                                      <IconBan size={14} className="mr-2 text-yellow-400" /> Revoke Access
+                                    </DropdownMenuItem>
+                                  )}
+                                  <DropdownMenuSeparator className="bg-white/5" />
+                                  <DropdownMenuItem className="text-sm focus:bg-white/5 cursor-pointer py-2" onClick={() => {
+                                    const newRole = user.role === 'admin' ? 'manager' : user.role === 'manager' ? 'staff' : user.role === 'staff' ? 'other' : 'staff';
+                                    handleUpdateUser(user.uid, { role: newRole });
+                                  }}>
+                                    Change Role: {user.role === 'admin' ? '→ Manager' : user.role === 'manager' ? '→ Staff' : user.role === 'staff' ? '→ Other' : '→ Staff'}
+                                  </DropdownMenuItem>
+                                  {!user.isDeclined && !user.isApproved && (
+                                    <>
+                                      <DropdownMenuSeparator className="bg-white/5" />
+                                      <DropdownMenuItem className="text-sm focus:bg-red-500/10 text-red-400 cursor-pointer py-2" onClick={() => { setSelectedUser(user); setIsDeclineDialogOpen(true); }}>
+                                        <IconUserX size={14} className="mr-2" /> Deny Access
+                                      </DropdownMenuItem>
+                                    </>
+                                  )}
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })
                     )}
                   </TableBody>
                 </Table>
@@ -800,7 +1044,7 @@ export default function AdminUsersPage() {
                   </div>
                   <DialogFooter>
                     <Button variant="ghost" onClick={() => setSupplierDialogOpen(false)} className="text-slate-400 text-sm">Cancel</Button>
-                    <Button onClick={handleAddSupplier} className="bg-white/10 hover:bg-white/20 text-sm" disabled={isProcessing}>
+                    <Button onClick={handleAddSupplier} className="bg-white/10 hover:bg-white/20 cursor-pointer text-sm" disabled={isProcessing}>
                       {isProcessing ? "Saving..." : editingSupplier ? "Update" : "Add Supplier"}
                     </Button>
                   </DialogFooter>
@@ -808,85 +1052,255 @@ export default function AdminUsersPage() {
               </Dialog>
             </div>
 
-            {/* Suppliers Grid */}
-            <div className="grid gap-4 md:grid-cols-2">
-              {paginatedSuppliers.map(supplier => (
-                <Card key={supplier.id} className="bg-white/[0.02] border-white/5 rounded-2xl hover:bg-white/[0.05] transition-all duration-200">
-                  <CardContent className="p-5">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-3 mb-3">
-                          <div className="h-10 w-10 rounded-xl bg-blue-500/10 flex items-center justify-center">
-                            <IconBuildingStore size={20} className="text-blue-400" />
-                          </div>
-                          <div>
-                            <h3 className="text-base font-semibold text-white">{supplier.name}</h3>
-                            {supplier.contact && (
-                              <p className="text-xs text-slate-400 flex items-center gap-1 mt-0.5">
-                                <IconUserCircle size={12} />
-                                {supplier.contact}
-                              </p>
-                            )}
-                          </div>
-                        </div>
-                        
-                        <div className="grid grid-cols-2 gap-3 mt-3">
-                          {supplier.email && (
-                            <div className="flex items-center gap-2 text-xs text-slate-500">
-                              <IconMail size={12} />
-                              <span className="truncate">{supplier.email}</span>
-                            </div>
-                          )}
-                          {supplier.phone && (
-                            <div className="flex items-center gap-2 text-xs text-slate-500">
-                              <IconPhone size={12} />
-                              <span>{supplier.phone}</span>
-                            </div>
-                          )}
-                          {supplier.address && (
-                            <div className="col-span-2 flex items-center gap-2 text-xs text-slate-500 mt-1">
-                              <IconMapPin size={12} />
-                              <span className="truncate">{supplier.address}</span>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                      <div className="flex gap-1">
-                        <Button variant="ghost" size="sm" className="h-8 w-8 text-slate-500 hover:text-white" onClick={() => {
-                          setEditingSupplier(supplier);
-                          setSupplierForm(supplier);
-                          setSupplierDialogOpen(true);
-                        }}>
-                          <IconEdit size={16} />
-                        </Button>
-                        <Button variant="ghost" size="sm" className="h-8 w-8 text-slate-500 hover:text-red-400" onClick={() => handleDeleteSupplier(supplier.id)}>
-                          <IconTrash size={16} />
-                        </Button>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-            
-            {filteredSuppliers.length === 0 && (
-              <div className="text-center py-12 text-slate-500 text-sm">
-                {searchQuery ? "No suppliers match your search" : "No suppliers added yet"}
+            {/* Search Bar */}
+            <div className="flex items-center justify-end">
+              <div className="relative w-64">
+                <IconSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600" size={16} />
+                <Input 
+                  placeholder="Search suppliers..."
+                  className="pl-9 bg-white/[0.03] border-white/5 text-sm text-white rounded-xl h-9 focus:ring-1 focus:ring-white/10"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
               </div>
-            )}
-            
-            {/* Pagination */}
-            {filteredSuppliers.length > itemsPerPage && (
-              <Pagination 
-                currentPage={supplierCurrentPage}
-                totalPages={totalSupplierPages}
-                onPageChange={setSupplierCurrentPage}
-              />
-            )}
+            </div>
+
+            {/* Suppliers Table */}
+            <Card className="bg-white/[0.01] border-white/5 backdrop-blur-3xl rounded-3xl overflow-hidden shadow-2xl">
+              <div className="p-6">
+                <Table>
+                  <TableHeader className="bg-white/[0.02]">
+                    <TableRow className="border-white/5 hover:bg-transparent">
+                      <TableHead className="text-slate-500 text-xs uppercase tracking-wider pl-8 h-12">Supplier Name</TableHead>
+                      <TableHead className="text-slate-500 text-xs uppercase tracking-wider h-12">Contact Person</TableHead>
+                      <TableHead className="text-slate-500 text-xs uppercase tracking-wider h-12">Email</TableHead>
+                      <TableHead className="text-slate-500 text-xs uppercase tracking-wider h-12">Phone</TableHead>
+                      <TableHead className="text-slate-500 text-xs uppercase tracking-wider h-12">Address</TableHead>
+                      <TableHead className="text-slate-500 text-xs uppercase tracking-wider h-12 text-right pr-8">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {paginatedSuppliers.length === 0 ? (
+                      <TableRow><TableCell colSpan={6} className="h-40 text-center text-slate-500 text-sm">No suppliers found</TableCell></TableRow>
+                    ) : (
+                      paginatedSuppliers.map((supplier) => (
+                        <TableRow key={supplier.id} className="border-white/5 hover:bg-white/[0.02] transition-colors group">
+                          <TableCell className="py-4 pl-8">
+                            <div className="flex items-center gap-3">
+                              <div className="h-8 w-8 rounded-lg bg-blue-500/10 flex items-center justify-center">
+                                <IconBuildingStore size={16} className="text-blue-400" />
+                              </div>
+                              <span className="text-white text-sm font-medium">{supplier.name}</span>
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-slate-300 text-sm">{supplier.contact || "-"}</TableCell>
+                          <TableCell className="text-slate-300 text-sm">{supplier.email || "-"}</TableCell>
+                          <TableCell className="text-slate-300 text-sm">{supplier.phone || "-"}</TableCell>
+                          <TableCell className="text-slate-300 text-sm max-w-xs truncate">{supplier.address || "-"}</TableCell>
+                          <TableCell className="text-right pr-8">
+                            <div className="flex items-center justify-end gap-1">
+                              <Button variant="ghost" size="sm" className="h-8 w-8 text-slate-500 hover:text-white" onClick={() => {
+                                setEditingSupplier(supplier);
+                                setSupplierForm(supplier);
+                                setSupplierDialogOpen(true);
+                              }}>
+                                <IconEdit size={16} />
+                              </Button>
+                              <Button variant="ghost" size="sm" className="h-8 w-8 text-slate-500 hover:text-red-400" onClick={() => handleDeleteSupplier(supplier.id)}>
+                                <IconTrash size={16} />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+                
+                {/* Pagination */}
+                {filteredSuppliers.length > itemsPerPage && (
+                  <Pagination 
+                    currentPage={supplierCurrentPage}
+                    totalPages={totalSupplierPages}
+                    onPageChange={setSupplierCurrentPage}
+                  />
+                )}
+              </div>
+            </Card>
           </div>
         )}
 
-        {/* Warehouses Tab Content - Removed email and description */}
+        {/* Distributors Tab Content */}
+        {activeTab === "distributors" && (
+          <div className="space-y-5">
+            {/* Add Distributor Button */}
+            <div className="flex justify-end">
+              <Dialog open={distributorDialogOpen} onOpenChange={setDistributorDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button className="bg-white/5 hover:bg-white/10 text-white text-sm cursor-pointer">
+                    <IconPlus size={14} className="mr-2" /> Add Distributor
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="bg-[#0f0f0f] border-white/10 text-slate-200 rounded-2xl max-w-md">
+                  <DialogHeader>
+                    <DialogTitle className="text-xl">{editingDistributor ? "Edit Distributor" : "Add New Distributor"}</DialogTitle>
+                    <DialogDescription className="text-slate-500 text-sm">
+                      Enter distributor details for product distribution
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="space-y-4 py-4">
+                    <div>
+                      <Label className="text-sm text-slate-400">Distributor Name *</Label>
+                      <Input 
+                        value={distributorForm.name}
+                        onChange={(e) => setDistributorForm({...distributorForm, name: e.target.value})}
+                        className="bg-white/[0.03] border-white/10 text-sm mt-1"
+                        placeholder="City Distributors Inc"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-sm text-slate-400">Contact Person</Label>
+                      <Input 
+                        value={distributorForm.contact}
+                        onChange={(e) => setDistributorForm({...distributorForm, contact: e.target.value})}
+                        className="bg-white/[0.03] border-white/10 text-sm mt-1"
+                        placeholder="Jane Doe"
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label className="text-sm text-slate-400">Email</Label>
+                        <Input 
+                          value={distributorForm.email}
+                          onChange={(e) => setDistributorForm({...distributorForm, email: e.target.value})}
+                          className="bg-white/[0.03] border-white/10 text-sm mt-1"
+                          placeholder="sales@citydist.com"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-sm text-slate-400">Phone</Label>
+                        <Input 
+                          value={distributorForm.phone}
+                          onChange={(e) => setDistributorForm({...distributorForm, phone: e.target.value})}
+                          className="bg-white/[0.03] border-white/10 text-sm mt-1"
+                          placeholder="+1-555-0456"
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <Label className="text-sm text-slate-400">Service Area</Label>
+                      <Input 
+                        value={distributorForm.serviceArea}
+                        onChange={(e) => setDistributorForm({...distributorForm, serviceArea: e.target.value})}
+                        className="bg-white/[0.03] border-white/10 text-sm mt-1"
+                        placeholder="North America Region"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-sm text-slate-400">Address</Label>
+                      <Input 
+                        value={distributorForm.address}
+                        onChange={(e) => setDistributorForm({...distributorForm, address: e.target.value})}
+                        className="bg-white/[0.03] border-white/10 text-sm mt-1"
+                        placeholder="456 Distribution Ave"
+                      />
+                    </div>
+                  </div>
+                  <DialogFooter>
+                    <Button variant="ghost" onClick={() => setDistributorDialogOpen(false)} className="text-slate-400 text-sm">Cancel</Button>
+                    <Button 
+                      onClick={handleAddDistributor} 
+                      disabled={isProcessing}
+                      className="bg-primary text-primary-foreground hover:bg-primary/90 text-sm cursor-pointer"
+                    >
+                      {isProcessing ? "Saving..." : editingDistributor ? "Update" : "Add Distributor"}
+                    </Button> 
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+            </div>
+
+            {/* Search Bar */}
+            <div className="flex items-center justify-end">
+              <div className="relative w-64">
+                <IconSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600" size={16} />
+                <Input 
+                  placeholder="Search distributors..."
+                  className="pl-9 bg-white/[0.03] border-white/5 text-sm text-white rounded-xl h-9 focus:ring-1 focus:ring-white/10"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+              </div>
+            </div>
+
+            {/* Distributors Table */}
+            <Card className="bg-white/[0.01] border-white/5 backdrop-blur-3xl rounded-3xl overflow-hidden shadow-2xl">
+              <div className="p-6">
+                <Table>
+                  <TableHeader className="bg-white/[0.02]">
+                    <TableRow className="border-white/5 hover:bg-transparent">
+                      <TableHead className="text-slate-500 text-xs uppercase tracking-wider pl-8 h-12">Distributor Name</TableHead>
+                      <TableHead className="text-slate-500 text-xs uppercase tracking-wider h-12">Contact Person</TableHead>
+                      <TableHead className="text-slate-500 text-xs uppercase tracking-wider h-12">Email</TableHead>
+                      <TableHead className="text-slate-500 text-xs uppercase tracking-wider h-12">Phone</TableHead>
+                      <TableHead className="text-slate-500 text-xs uppercase tracking-wider h-12">Service Area</TableHead>
+                      <TableHead className="text-slate-500 text-xs uppercase tracking-wider h-12">Address</TableHead>
+                      <TableHead className="text-slate-500 text-xs uppercase tracking-wider h-12 text-right pr-8">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {paginatedDistributors.length === 0 ? (
+                      <TableRow><TableCell colSpan={7} className="h-40 text-center text-slate-500 text-sm">No distributors found</TableCell></TableRow>
+                    ) : (
+                      paginatedDistributors.map((distributor) => (
+                        <TableRow key={distributor.id} className="border-white/5 hover:bg-white/[0.02] transition-colors group">
+                          <TableCell className="py-4 pl-8">
+                            <div className="flex items-center gap-3">
+                              <div className="h-8 w-8 rounded-lg bg-green-500/10 flex items-center justify-center">
+                                <IconPackage size={16} className="text-green-400" />
+                              </div>
+                              <span className="text-white text-sm font-medium">{distributor.name}</span>
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-slate-300 text-sm">{distributor.contact || "-"}</TableCell>
+                          <TableCell className="text-slate-300 text-sm">{distributor.email || "-"}</TableCell>
+                          <TableCell className="text-slate-300 text-sm">{distributor.phone || "-"}</TableCell>
+                          <TableCell className="text-slate-300 text-sm">{distributor.serviceArea || "-"}</TableCell>
+                          <TableCell className="text-slate-300 text-sm max-w-xs truncate">{distributor.address || "-"}</TableCell>
+                          <TableCell className="text-right pr-8">
+                            <div className="flex items-center justify-end gap-1">
+                              <Button variant="ghost" size="sm" className="h-8 w-8 text-slate-500 hover:text-white" onClick={() => {
+                                setEditingDistributor(distributor);
+                                setDistributorForm(distributor);
+                                setDistributorDialogOpen(true);
+                              }}>
+                                <IconEdit size={16} />
+                              </Button>
+                              <Button variant="ghost" size="sm" className="h-8 w-8 text-slate-500 hover:text-red-400" onClick={() => handleDeleteDistributor(distributor.id)}>
+                                <IconTrash size={16} />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+                
+                {/* Pagination */}
+                {filteredDistributors.length > itemsPerPage && (
+                  <Pagination 
+                    currentPage={distributorCurrentPage}
+                    totalPages={totalDistributorPages}
+                    onPageChange={setDistributorCurrentPage}
+                  />
+                )}
+              </div>
+            </Card>
+          </div>
+        )}
+
+        {/* Warehouses Tab Content */}
         {activeTab === "warehouses" && (
           <div className="space-y-5">
             {/* Add Warehouse Button */}
@@ -972,16 +1386,35 @@ export default function AdminUsersPage() {
                     </div>
                   </div>
                   <DialogFooter>
-                    <Button variant="ghost" onClick={() => setWarehouseDialogOpen(false)} className="text-slate-400 text-sm">Cancel</Button>
-                    <Button onClick={handleAddWarehouse} className="bg-white/10 hover:bg-white/20 text-sm" disabled={isProcessing}>
-                      {isProcessing ? "Saving..." : editingWarehouse ? "Update" : "Add Warehouse"}
-                    </Button>
+                    <Button variant="ghost" onClick={() => setWarehouseDialogOpen(false)} className="text-slate-400 cursor-pointer text-sm">Cancel</Button>
+                    <Button 
+                        onClick={handleAddWarehouse} 
+                        disabled={isProcessing}
+                        variant="outline"
+                        size="sm"
+                        className="cursor-pointer"
+                      >
+                        {isProcessing ? "Saving..." : editingWarehouse ? "Update" : "Add Warehouse"}
+                      </Button>   
                   </DialogFooter>
                 </DialogContent>
               </Dialog>
             </div>
 
-            {/* Warehouses Grid - Removed email and description */}
+            {/* Search Bar */}
+            <div className="flex items-center justify-end">
+              <div className="relative w-64">
+                <IconSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600" size={16} />
+                <Input 
+                  placeholder="Search warehouses..."
+                  className="pl-9 bg-white/[0.03] border-white/5 text-sm text-white rounded-xl h-9 focus:ring-1 focus:ring-white/10"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+              </div>
+            </div>
+
+            {/* Warehouses Grid */}
             <div className="grid gap-4 md:grid-cols-2">
               {paginatedWarehouses.map(warehouse => (
                 <Card key={warehouse.id} className="bg-white/[0.02] border-white/5 rounded-2xl hover:bg-white/[0.05] transition-all duration-200">
@@ -1102,9 +1535,4 @@ export default function AdminUsersPage() {
       </div>
     </div>
   );
-}
-
-// Helper function for className merging
-function cn(...classes) {
-  return classes.filter(Boolean).join(" ");
 }
