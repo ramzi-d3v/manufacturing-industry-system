@@ -8,8 +8,9 @@ import {
   IconChevronRight,
   IconStack2,      
   IconBox,         
-  IconPackageExport ,
-  IconBolt 
+  IconPackageExport,
+  IconBolt,
+  IconDashboard
 } from "@tabler/icons-react";
 
 import {
@@ -32,8 +33,25 @@ import { cn } from "@/lib/utils"
 export function NavMain() {
   const pathname = usePathname()
   
+  // Check if a path belongs to a section
+  const isPathInSection = (section) => {
+    switch(section) {
+      case "raw-materials":
+        return pathname?.startsWith("/raw-materials")
+      case "finished-products":
+        return pathname?.startsWith("/finished-products")
+      default:
+        return false
+    }
+  }
+
   // State to track which section is open (only one at a time)
-  const [openSection, setOpenSection] = React.useState("raw-materials")
+  const [openSection, setOpenSection] = React.useState(() => {
+    // Initialize with the section that contains the current path
+    if (isPathInSection("raw-materials")) return "raw-materials"
+    if (isPathInSection("finished-products")) return "finished-products"
+    return null
+  })
 
   const handleSectionToggle = (section) => {
     setOpenSection(prev => prev === section ? null : section)
@@ -43,15 +61,24 @@ export function NavMain() {
     <SidebarGroup>
       <SidebarGroupContent className="flex flex-col gap-2">
         
-        {/* Quick Action */}
+        {/* Dashboard Link */}
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton
-              tooltip="New Production Order"
-              className="bg-primary text-primary-foreground hover:bg-slate-600 cursor-pointer hover:backdrop-blur-sm hover:bg-white/10 transition-all duration-200"
+              asChild
+              tooltip="Dashboard"
+              isActive={pathname === "/"}
+              className="cursor-pointer hover:backdrop-blur-sm hover:bg-white/10 transition-all duration-200"
             >
-              <IconCirclePlusFilled size={18} />
-              <span>Quick Action</span>
+              <Link href="/">
+                <IconDashboard size={18} stroke={1.5} />
+                <span className={cn(
+                  "font-medium",
+                  pathname === "/" ? "text-purple-400" : ""
+                )}>
+                  Dashboard
+                </span>
+              </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
@@ -179,27 +206,25 @@ export function NavMain() {
             </SidebarMenuItem>
           </Collapsible>
 
-          {/* 3. Products - Standalone */}
+          {/* 3. Energy Consumption - Standalone */}
           <SidebarMenuItem>
             <SidebarMenuButton 
               asChild 
-              tooltip="Products & Catalog"
-              isActive={pathname === "/products"}
+              tooltip="Energy Consumption"
+              isActive={pathname === "/energy-consumption"}
               className="cursor-pointer hover:backdrop-blur-sm hover:bg-white/10 transition-all duration-200"
             >
-              <Link href="/energy-consuption" className="flex items-center gap-2">
+              <Link href="/energy-consumption">
                 <IconBolt size={18} stroke={1.5} />
                 <span className={cn(
                   "font-medium",
-                  pathname === "/energy-consuption" ? "text-purple-400" : ""
+                  pathname === "/energy-consumption" ? "text-purple-400" : ""
                 )}>
-                  Energy Consuption
+                  Energy Consumption
                 </span>
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
-            
-            
         </SidebarMenu>
       </SidebarGroupContent>
     </SidebarGroup>

@@ -75,9 +75,11 @@ import {
   IconChevronLeft, IconChevronsLeft, IconChevronsRight, IconBuildingWarehouse,
   IconLocation, IconMail, IconPhone, IconMapPin, IconUserCircle,
   IconPackage, IconBuildingCommunity, IconUserCheck, IconUserCancel,
-  IconUsersGroup, IconBriefcase, IconCrown, IconStar
+  IconUsersGroup, IconBriefcase, IconCrown, IconStar,
+  IconSpeakerphone, IconListCheck
 } from "@tabler/icons-react";
 import { toast } from "sonner";
+import { AnnouncementsTodosManager } from "@/components/admin/AnnouncementsTodosManager";
 
 export default function AdminUsersPage() {
   const [activeTab, setActiveTab] = useState("users");
@@ -93,11 +95,11 @@ export default function AdminUsersPage() {
   const [selectedUser, setSelectedUser] = useState(null);
   const [declineReason, setDeclineReason] = useState("");
   
-  // User Filter States
-  const [userStatusFilter, setUserStatusFilter] = useState("all"); // all, approved, declined, pending
-  const [userRoleFilter, setUserRoleFilter] = useState("all"); // all, admin, manager, staff, other
+  // User Filter States - Changed to select
+  const [userStatusFilter, setUserStatusFilter] = useState("all");
+  const [userRoleFilter, setUserRoleFilter] = useState("all");
   
-  // Pagination State - 5 items per page for tables
+  // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 4;
   
@@ -446,7 +448,7 @@ export default function AdminUsersPage() {
     }
   };
 
-  // Statistics for filter tabs
+  // Statistics
   const stats = {
     total: users.length,
     approved: users.filter(u => u.isApproved && !u.isDeclined).length,
@@ -461,11 +463,10 @@ export default function AdminUsersPage() {
     warehouses: warehouses.length,
   };
 
-  // Filtered Users based on status and role filters
+  // Filtered Users
   const filteredUsers = useMemo(() => {
     let filtered = users;
     
-    // Apply status filter
     if (userStatusFilter === "approved") {
       filtered = filtered.filter(u => u.isApproved && !u.isDeclined);
     } else if (userStatusFilter === "declined") {
@@ -474,12 +475,10 @@ export default function AdminUsersPage() {
       filtered = filtered.filter(u => !u.isApproved && !u.isDeclined);
     }
     
-    // Apply role filter
     if (userRoleFilter !== "all") {
       filtered = filtered.filter(u => u.role === userRoleFilter && !u.isDeclined);
     }
     
-    // Apply search filter
     filtered = filtered.filter(user => {
       const nameMatch = (user.firstName || user.name || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
                         (user.email || "").toLowerCase().includes(searchQuery.toLowerCase());
@@ -618,7 +617,7 @@ export default function AdminUsersPage() {
         <div className="absolute bottom-[10%] left-[10%] h-[300px] w-[300px] rounded-full bg-blue-600/10 blur-[120px]" />
       </div>
       
-      <div className="max-w-6xl mx-auto space-y-8">
+      <div className="max-w-7xl mx-auto space-y-8">
         {/* Breadcrumb */}
         <div className="flex items-center justify-between">
           <Breadcrumb>
@@ -644,7 +643,7 @@ export default function AdminUsersPage() {
         <div>
           <h1 className="text-3xl font-semibold tracking-tight text-white">Admin Dashboard</h1>
           <p className="text-slate-500 text-sm tracking-wide mt-1">
-            Manage users, suppliers, distributors, and warehouses
+            Manage users, suppliers, distributors, warehouses, and communications
           </p>
         </div>
 
@@ -736,81 +735,85 @@ export default function AdminUsersPage() {
                 <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-white rounded-full" />
               )}
             </button>
+
+            <button
+              onClick={() => {
+                setActiveTab("communications");
+                setSearchQuery("");
+              }}
+              className={`pb-3 px-1 text-sm font-medium transition-all duration-200 relative ${
+                activeTab === "communications" ? "text-white" : "text-slate-500 hover:text-slate-300"
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <IconSpeakerphone size={16} />
+                Communications
+              </div>
+              {activeTab === "communications" && (
+                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-white rounded-full" />
+              )}
+            </button>
           </div>
         </div>
 
         {/* Users Tab Content */}
         {activeTab === "users" && (
           <>
-            {/* Status Filter Tabs */}
-            <div className="border-b border-white/5  ">
-              <div className="flex  gap-1">
-                <button
-                  onClick={() => setUserStatusFilter("all")}
-                  className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-all ${
-                    userStatusFilter === "all"
-                      ? "bg-white/5 text-white border-b-2 border-white"
-                      : "text-slate-500 hover:text-slate-300"
-                  }`}
-                >
-                  <div className="flex items-center gap-2">
-                    <IconUsers size={14} />
-                    All Users
-                    <Badge className="ml-1 text-[10px] bg-white/10">{stats.total}</Badge>
-                  </div>
-                </button>
-                <button
-                  onClick={() => setUserStatusFilter("approved")}
-                  className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-all ${
-                    userStatusFilter === "approved"
-                      ? "bg-white/5 text-white border-b-2 border-white"
-                      : "text-slate-500 hover:text-slate-300"
-                  }`}
-                >
-                  <div className="flex items-center gap-2">
-                    <IconUserCheck size={14} className="text-green-400" />
-                    Approved
-                    <Badge className="ml-1 text-[10px] bg-green-500/20 text-green-400">{stats.approved}</Badge>
-                  </div>
-                </button>
-                <button
-                  onClick={() => setUserStatusFilter("pending")}
-                  className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-all ${
-                    userStatusFilter === "pending"
-                      ? "bg-white/5 text-white border-b-2 border-white"
-                      : "text-slate-500 hover:text-slate-300"
-                  }`}
-                >
-                  <div className="flex items-center gap-2">
-                    <IconUser size={14} className="text-yellow-400" />
-                    Pending
-                    <Badge className="ml-1 text-[10px] bg-yellow-500/20 text-yellow-400">{stats.pending}</Badge>
-                  </div>
-                </button>
-                <button
-                  onClick={() => setUserStatusFilter("declined")}
-                  className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-all ${
-                    userStatusFilter === "declined"
-                      ? "bg-white/5 text-white border-b-2 border-white"
-                      : "text-slate-500 hover:text-slate-300"
-                  }`}
-                >
-                  <div className="flex items-center gap-2">
-                    <IconUserCancel size={14} className="text-red-400" />
-                    Declined
-                    <Badge className="ml-1 text-[10px] bg-red-500/20 text-red-400">{stats.declined}</Badge>
-                  </div>
-                </button>
-              </div>
-            </div>
-
-            
-
+            {/* Filters Row with Select Dropdowns */}
 
             {/* Users Table */}
             <Card className="bg-white/[0.01] border-white/5 backdrop-blur-3xl rounded-3xl overflow-hidden shadow-2xl">
-            <div className="flex items-center justify-center gap-4">
-                {/* Search Bar */}
+            <div className="flex items-center justify-between gap-4 flex-wrap px-7">
+              <div className="flex gap-3">
+                {/* Status Filter Select */}
+                <Select value={userStatusFilter} onValueChange={setUserStatusFilter}>
+                  <SelectTrigger className="w-[150px] bg-white/[0.03] border-white/10 text-sm">
+                    <SelectValue placeholder="Filter by status" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-[#0f0f0f] border-white/10">
+                    <SelectItem value="all">
+                      <div className="flex items-center gap-2">
+                        <IconUsers size={14} /> All Users ({stats.total})
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="approved">
+                      <div className="flex items-center gap-2">
+                        <IconCircleCheckFilled size={14} className="text-green-400" /> Approved ({stats.approved})
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="pending">
+                      <div className="flex items-center gap-2">
+                        <IconUser size={14} className="text-yellow-400" /> Pending ({stats.pending})
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="declined">
+                      <div className="flex items-center gap-2">
+                        <IconUserCancel size={14} className="text-red-400" /> Declined ({stats.declined})
+                      </div>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+
+                {/* Role Filter Select */}
+                <Select value={userRoleFilter} onValueChange={setUserRoleFilter}>
+                  <SelectTrigger className="w-[140px] bg-white/[0.03] border-white/10 text-sm">
+                    <SelectValue placeholder="Filter by role" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-[#0f0f0f] border-white/10">
+                    <SelectItem value="all">All Roles</SelectItem>
+                    {roleOptions.map((role) => (
+                      <SelectItem key={role.value} value={role.value}>
+                        <div className="flex items-center gap-2">
+                          <role.icon size={14} className={role.color} />
+                          {role.label} ({stats[role.value]})
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Search Bar */}
               <div className="relative w-64">
                 <IconSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600" size={16} />
                 <Input 
@@ -820,40 +823,6 @@ export default function AdminUsersPage() {
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
               </div>
-              {/* Role Filter Pills */}
-            <div className="flex flex-wrap gap-2">
-              <button
-                onClick={() => setUserRoleFilter("all")}
-                className={`px-3 py-1.5 text-xs rounded-full transition-all ${
-                  userRoleFilter === "all"
-                    ? "bg-white/10 text-white"
-                    : "bg-white/5 text-slate-400 hover:text-white"
-                }`}
-              >
-                All Roles
-              </button>
-              {roleOptions.map((role) => {
-                const RoleIcon = role.icon;
-                const roleCount = stats[role.value];
-                return (
-                  <button
-                    key={role.value}
-                    onClick={() => setUserRoleFilter(role.value)}
-                    className={`px-3 py-1.5 text-xs rounded-full transition-all flex items-center gap-1 ${
-                      userRoleFilter === role.value
-                        ? "bg-white/10 text-white"
-                        : "bg-white/5 text-slate-400 hover:text-white"
-                    }`}
-                  >
-                    <RoleIcon size={12} className={role.color} />
-                    {role.label}
-                    <Badge className="ml-1 text-[9px] bg-white/10">
-                      {roleCount || 0}
-                    </Badge>
-                  </button>
-                );
-              })}
-            </div>
             </div>
               <div className="p-6">
                 <Table>
@@ -978,7 +947,10 @@ export default function AdminUsersPage() {
         {/* Suppliers Tab Content */}
         {activeTab === "suppliers" && (
           <div className="space-y-5">
-            {/* Add Supplier Button */}
+
+
+            <Card className="bg-white/[0.01] border-white/5 backdrop-blur-3xl rounded-3xl overflow-hidden shadow-2xl">
+            <div className="flex items-center justify-between px-7">
             <div className="flex justify-end">
               <Dialog open={supplierDialogOpen} onOpenChange={setSupplierDialogOpen}>
                 <DialogTrigger asChild>
@@ -1051,9 +1023,6 @@ export default function AdminUsersPage() {
                 </DialogContent>
               </Dialog>
             </div>
-
-            {/* Search Bar */}
-            <div className="flex items-center justify-end">
               <div className="relative w-64">
                 <IconSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600" size={16} />
                 <Input 
@@ -1064,9 +1033,6 @@ export default function AdminUsersPage() {
                 />
               </div>
             </div>
-
-            {/* Suppliers Table */}
-            <Card className="bg-white/[0.01] border-white/5 backdrop-blur-3xl rounded-3xl overflow-hidden shadow-2xl">
               <div className="p-6">
                 <Table>
                   <TableHeader className="bg-white/[0.02]">
@@ -1117,7 +1083,6 @@ export default function AdminUsersPage() {
                   </TableBody>
                 </Table>
                 
-                {/* Pagination */}
                 {filteredSuppliers.length > itemsPerPage && (
                   <Pagination 
                     currentPage={supplierCurrentPage}
@@ -1133,7 +1098,10 @@ export default function AdminUsersPage() {
         {/* Distributors Tab Content */}
         {activeTab === "distributors" && (
           <div className="space-y-5">
-            {/* Add Distributor Button */}
+
+
+            <Card className="bg-white/[0.01] border-white/5 backdrop-blur-3xl rounded-3xl overflow-hidden shadow-2xl">
+            <div className="flex items-center justify-between px-7">
             <div className="flex justify-end">
               <Dialog open={distributorDialogOpen} onOpenChange={setDistributorDialogOpen}>
                 <DialogTrigger asChild>
@@ -1211,7 +1179,7 @@ export default function AdminUsersPage() {
                     <Button 
                       onClick={handleAddDistributor} 
                       disabled={isProcessing}
-                      className="bg-primary text-primary-foreground hover:bg-primary/90 text-sm cursor-pointer"
+                      className="bg-white/10 hover:bg-white/20 cursor-pointer text-sm"
                     >
                       {isProcessing ? "Saving..." : editingDistributor ? "Update" : "Add Distributor"}
                     </Button> 
@@ -1219,9 +1187,6 @@ export default function AdminUsersPage() {
                 </DialogContent>
               </Dialog>
             </div>
-
-            {/* Search Bar */}
-            <div className="flex items-center justify-end">
               <div className="relative w-64">
                 <IconSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600" size={16} />
                 <Input 
@@ -1232,9 +1197,6 @@ export default function AdminUsersPage() {
                 />
               </div>
             </div>
-
-            {/* Distributors Table */}
-            <Card className="bg-white/[0.01] border-white/5 backdrop-blur-3xl rounded-3xl overflow-hidden shadow-2xl">
               <div className="p-6">
                 <Table>
                   <TableHeader className="bg-white/[0.02]">
@@ -1287,7 +1249,6 @@ export default function AdminUsersPage() {
                   </TableBody>
                 </Table>
                 
-                {/* Pagination */}
                 {filteredDistributors.length > itemsPerPage && (
                   <Pagination 
                     currentPage={distributorCurrentPage}
@@ -1303,7 +1264,8 @@ export default function AdminUsersPage() {
         {/* Warehouses Tab Content */}
         {activeTab === "warehouses" && (
           <div className="space-y-5">
-            {/* Add Warehouse Button */}
+
+            <div className="flex items-center justify-between px-1 ">
             <div className="flex justify-end">
               <Dialog open={warehouseDialogOpen} onOpenChange={setWarehouseDialogOpen}>
                 <DialogTrigger asChild>
@@ -1344,7 +1306,7 @@ export default function AdminUsersPage() {
                           <SelectTrigger className="bg-white/[0.03] border-white/10 text-sm">
                             <SelectValue />
                           </SelectTrigger>
-                          <SelectContent>
+                          <SelectContent className="bg-[#0f0f0f] border-white/10">
                             {warehouseTypes.map((type) => (
                               <SelectItem key={type.value} value={type.value}>
                                 {type.label}
@@ -1390,9 +1352,7 @@ export default function AdminUsersPage() {
                     <Button 
                         onClick={handleAddWarehouse} 
                         disabled={isProcessing}
-                        variant="outline"
-                        size="sm"
-                        className="cursor-pointer"
+                        className="bg-white/10 hover:bg-white/20 cursor-pointer text-sm"
                       >
                         {isProcessing ? "Saving..." : editingWarehouse ? "Update" : "Add Warehouse"}
                       </Button>   
@@ -1400,9 +1360,6 @@ export default function AdminUsersPage() {
                 </DialogContent>
               </Dialog>
             </div>
-
-            {/* Search Bar */}
-            <div className="flex items-center justify-end">
               <div className="relative w-64">
                 <IconSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600" size={16} />
                 <Input 
@@ -1414,7 +1371,6 @@ export default function AdminUsersPage() {
               </div>
             </div>
 
-            {/* Warehouses Grid */}
             <div className="grid gap-4 md:grid-cols-2">
               {paginatedWarehouses.map(warehouse => (
                 <Card key={warehouse.id} className="bg-white/[0.02] border-white/5 rounded-2xl hover:bg-white/[0.05] transition-all duration-200">
@@ -1492,7 +1448,6 @@ export default function AdminUsersPage() {
               </div>
             )}
             
-            {/* Pagination */}
             {filteredWarehouses.length > itemsPerPage && (
               <Pagination 
                 currentPage={warehouseCurrentPage}
@@ -1500,6 +1455,16 @@ export default function AdminUsersPage() {
                 onPageChange={setWarehouseCurrentPage}
               />
             )}
+          </div>
+        )}
+
+        {/* Communications Tab Content */}
+        {activeTab === "communications" && (
+          <div className="space-y-5">
+            <AnnouncementsTodosManager 
+              adminUid={currentAdminUser?.uid} 
+              users={users} 
+            />
           </div>
         )}
 
