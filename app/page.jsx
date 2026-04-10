@@ -287,15 +287,15 @@
                           </Button>
                           <Button size="sm" variant="outline" className="h-8 text-xs gap-1">
                             <IconMail className="h-3 w-3" />
-                            support@supplychain.com
+                            ramzi@prodesign.co.tz
                           </Button>
                           <Button size="sm" variant="outline" className="h-8 text-xs gap-1">
                             <IconPhone className="h-3 w-3" />
-                            +1 (555) 123-4567
+                            +255 629 220 302
                           </Button>
                         </div>
                       </div>
-                      <p className="text-[9px] text-muted-foreground text-center mt-3">
+                      <p className="text-[10px] text-muted-foreground text-center mt-3">
                         💡 "Efficient supply chain management is the key to growth. Keep track of your warehouses, suppliers, and distributors in one place."
                       </p>
                     </div>
