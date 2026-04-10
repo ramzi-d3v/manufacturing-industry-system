@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useLayoutEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { doc, onSnapshot, updateDoc } from "firebase/firestore";
 import { getFirestoreDB, auth } from "@/lib/firebase"; 
@@ -15,7 +15,7 @@ export function ApprovalGuard({ user, children }) {
   const db = getFirestoreDB();
   const router = useRouter();
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!user) return;
 
     const unsub = onSnapshot(doc(db, "user_details", user.uid), (snap) => {

@@ -245,12 +245,12 @@ export default function AdminUsersPage() {
     try {
       const userRef = doc(db, "user_details", selectedUser.uid);
       const declinedRef = doc(db, "declinedUsers", selectedUser.uid);
-
+      // Mark declined in-place and archive a copy
       await updateDoc(userRef, {
         isDeclined: true,
         isApproved: false,
         description: declineReason,
-        updatedAt: new Date()
+        updatedAt: new Date(),
       });
 
       await setDoc(declinedRef, {
@@ -261,7 +261,20 @@ export default function AdminUsersPage() {
         declinedAt: new Date(),
       }, { merge: true });
 
-      toast.success("User moved to archive");
+      // Remove profile detail documents that were submitted (company, payment, documents)
+      const toDelete = [
+        doc(db, "company_details", selectedUser.uid),
+        doc(db, "payment_info", selectedUser.uid),
+        doc(db, "company_documents", selectedUser.uid),
+      ];
+
+      try {
+        await Promise.all(toDelete.map((d) => deleteDoc(d)));
+      } catch (delErr) {
+        console.warn("Some profile docs could not be deleted:", delErr);
+      }
+
+      toast.success("User declined and profile data cleared");
       setIsDeclineDialogOpen(false);
       setDeclineReason("");
       fetchUsers();

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useLayoutEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { onAuthStateChanged } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
@@ -14,7 +14,7 @@ export default function RouteGuard({ children }) {
   const db = getFirestoreDB();
   const auth = getFirebaseAuth();
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       // 1. Handle Unauthenticated users
       if (!user) {

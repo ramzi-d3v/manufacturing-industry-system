@@ -1,11 +1,11 @@
 import { SignupForm } from "@/components/signup-form";
-import GuestOnlyPage from "@/container/GuestOnlyProtection";
+import { GuestGuard } from "@/container/RouteGuards";
 
 export default function SignupPage() {
   return (
-    <GuestOnlyPage>
+    <GuestGuard redirectTo="/home">
       <div className="relative h-screen w-full flex items-center justify-center bg-[#050505] p-4 overflow-hidden">
-        
+
         {/* Background Ambient Glows (SAME AS LOGIN) */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
           <div className="absolute top-[-5%] left-[-5%] w-[40%] h-[40%] rounded-full bg-violet-600/10 blur-[100px]" />
@@ -17,6 +17,6 @@ export default function SignupPage() {
           <SignupForm />
         </div>
       </div>
-    </GuestOnlyPage>
+    </GuestGuard>
   );
 }

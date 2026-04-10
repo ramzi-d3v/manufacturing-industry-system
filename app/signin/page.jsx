@@ -1,15 +1,16 @@
 "use client";
 
-import {LoginForm} from "@/components/signin-form";
+import { LoginForm } from "@/components/signin-form";
+import { GuestGuard } from "@/container/RouteGuards";
 
-function page() {
+export default function SignInPage() {
   return (
-    <div className="">
-        <div className=""> 
-            <LoginForm />
+    <GuestGuard redirectTo="/home">
+      <div className="">
+        <div className="">
+          <LoginForm />
         </div>
-    </div>
-  )
+      </div>
+    </GuestGuard>
+  );
 }
-
-export default page

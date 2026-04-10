@@ -21,6 +21,7 @@ export function LoginForm({ className, ...props }) {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [guestLoading, setGuestLoading] = useState(false);
 
   const handleEmailLogin = async (e) => {
     e.preventDefault();
@@ -35,6 +36,22 @@ export function LoginForm({ className, ...props }) {
       toast.error("Login failed.");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleGuestLogin = async () => {
+    setGuestLoading(true);
+    setError("");
+    try {
+      await signInWithEmailAndPassword(auth, "ramzi.d3v@gmail.com", "Twokn5ive");
+      toast.success("Guest access granted!");
+      router.push("/home");
+    } catch (err) {
+      console.error("Guest login error:", err);
+      setError("Guest login unavailable.");
+      toast.error("Guest access failed.");
+    } finally {
+      setGuestLoading(false);
     }
   };
 
@@ -165,6 +182,24 @@ export function LoginForm({ className, ...props }) {
                 />
               </svg>
               continue with Google
+            </Button>
+
+            {/* Guest Mode */}
+            <Button
+              type="button"
+              variant="ghost"
+              className="w-full h-11 rounded-xl border border-white/10 bg-white/[0.02] text-slate-400 hover:bg-white/5 hover:text-white transition-all text-[10px] uppercase tracking-widest cursor-pointer mt-2"
+              onClick={handleGuestLogin}
+              disabled={guestLoading}
+            >
+              {guestLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Processing...
+                </>
+              ) : (
+                "Visit as Guest"
+              )}
             </Button>
           </form>
 

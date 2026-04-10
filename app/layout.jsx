@@ -6,6 +6,8 @@ import ComplitePageGuard from "@/container/complitePageGuard";
 import { Roboto } from 'next/font/google'
 import { Toaster } from "@/components/ui/sonner"
 import { ThemeProvider } from "@/components/theme-provider";
+import { AuthProvider } from "@/context/AuthContext";
+import GlobalAuthGuard from "@/container/GlobalAuthGuard";
 
 const roboto = Roboto({
   weight: ['400', '500', '700'],
@@ -23,12 +25,16 @@ export default function RootLayout({ children }) {
       </head>
       <body className="antialiased">
         <ThemeProvider>
-          <div className="pointer-events-none fixed inset-0 overflow-hidden">
+          <AuthProvider>
+            <GlobalAuthGuard>
+              <div className="pointer-events-none fixed inset-0 overflow-hidden">
             {/* Top Left Glow - Brighter Purple */}
             <div className="absolute -top-[0%] -left-[10%] h-50 w-50 rounded-full bg-purple-500/30 blur-[100px] animate-pulse-bright-1" />
           </div>
-          {children}
-          <Toaster />
+              {children}
+              <Toaster />
+            </GlobalAuthGuard>
+          </AuthProvider>
         </ThemeProvider>
       </body>
     </html>
