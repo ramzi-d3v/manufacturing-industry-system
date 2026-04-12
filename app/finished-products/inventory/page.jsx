@@ -418,61 +418,17 @@ export default function FinishedProductPage() {
 
   return (
     <>
-      <style jsx global>{`
-        @keyframes pulse-glow-bright-1 {
-          0%, 100% {
-            opacity: 0.5;
-            transform: scale(1);
-          }
-          50% {
-            opacity: 0.9;
-            transform: scale(1.25);
-          }
-        }
-        
-        @keyframes pulse-glow-bright-2 {
-          0%, 100% {
-            opacity: 0.4;
-            transform: scale(1);
-          }
-          50% {
-            opacity: 0.85;
-            transform: scale(1.3);
-          }
-        }
-        
-        @keyframes pulse-glow-bright-3 {
-          0%, 100% {
-            opacity: 0.35;
-            transform: scale(1);
-          }
-          50% {
-            opacity: 0.8;
-            transform: scale(1.2);
-          }
-        }
-        
-        .animate-pulse-bright-1 {
-          animation: pulse-glow-bright-1 4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-        }
-        
-        .animate-pulse-bright-2 {
-          animation: pulse-glow-bright-2 5s cubic-bezier(0.4, 0, 0.6, 1) infinite 0.5s;
-        }
-        
-        .animate-pulse-bright-3 {
-          animation: pulse-glow-bright-3 4.5s cubic-bezier(0.4, 0, 0.6, 1) infinite 1s;
-        }
-      `}</style>
+      
+     
       
       <SidebarProvider>
         <AppSidebar variant="inset" />
         <SidebarInset>
           <SiteHeader className="relative overflow-hidden bg-zinc-950" />
-          <div className="pointer-events-none fixed inset-0 overflow-hidden">
-            <div className="absolute -top-[10%] -left-[10%] h-50 w-50 rounded-full bg-purple-500/30 blur-[100px] animate-pulse-bright-1" />
-            <div className="absolute top-[20%] -right-[5%] h-100 w-100 rounded-full bg-indigo-400/25 blur-[90px] animate-pulse-bright-2" />
-            <div className="absolute bottom-[10%] -left-[5%] h-50 w-75 rounded-full bg-fuchsia-500/20 blur-[70px] animate-pulse-bright-3" />
+            <div className="pointer-events-none fixed inset-0 overflow-hidden z-0">
+            
+            <div className="absolute top-[30%] -right-[10%] h-[400px] w-[400px] rounded-full bg-indigo-500/15 blur-[120px] animate-pulse delay-1000" />
+            <div className="absolute bottom-[10%] left-[20%] h-[300px] w-[300px] rounded-full bg-fuchsia-600/10 blur-[100px] animate-pulse delay-2000" />
           </div>
           
           <div className="flex-1 space-y-4 p-4 md:p-8 pt-6 relative z-10">

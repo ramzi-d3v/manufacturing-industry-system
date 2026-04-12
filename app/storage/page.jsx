@@ -213,6 +213,10 @@ export default function WarehousesPage() {
     
     return (
       <div className="flex items-center justify-end gap-1 mt-2">
+        <div className="pointer-events-none fixed inset-0 overflow-hidden z-0">     
+            <div className="absolute top-[30%] -right-[10%] h-[400px] w-[400px] rounded-full bg-indigo-500/15 blur-[120px] " />
+            <div className="absolute bottom-[10%] left-[20%] h-[300px] w-[300px] rounded-full bg-fuchsia-600/10 blur-[100px] " />
+          </div>
         <Button
           variant="outline"
           size="sm"

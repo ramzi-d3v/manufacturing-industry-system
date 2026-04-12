@@ -372,7 +372,7 @@ export default function RawMaterialPage() {
           <div className="flex-1 p-8 flex items-center justify-center">
             <div className="text-center">
               <IconLoader className="animate-spin text-primary" size={32} />
-              <p className="mt-2 text-muted-foreground">Loading materials...</p>
+              
             </div>
           </div>
         </SidebarInset>
@@ -429,17 +429,10 @@ export default function RawMaterialPage() {
       <AppSidebar variant="inset" />
       <SidebarInset>
         <SiteHeader className="relative overflow-hidden" />
-        {/* Static background blur circles - using theme colors */}
-        <div className="pointer-events-none fixed inset-0 overflow-hidden z-0">
-          {/* Top Left Glow - Primary color */}
-          <div className="absolute -top-[10%] left-40 h-40 w-96 rounded-full bg-primary/10 dark:bg-primary/20 blur-[80px]" />
-          
-          {/* Center Right Glow - Purple */}
-          <div className="absolute top-[40%] -right-[5%] h-20 w-100 rounded-full bg-purple-500/10 dark:bg-purple-500/20 blur-[70px]" />
-          
-          {/* Bottom Left Glow - Blue */}
-          <div className="absolute bottom-[0%] left-80 h-30 w-72 rounded-full bg-blue-500/10 dark:bg-blue-500/20 blur-[60px]" />
-        </div>
+        <div className="pointer-events-none fixed inset-0 overflow-hidden z-0">           
+            <div className="absolute top-[30%] -right-[10%] h-[400px] w-[400px] rounded-full bg-indigo-500/15 blur-[120px] " />
+            <div className="absolute bottom-[10%] left-[20%] h-[300px] w-[300px] rounded-full bg-fuchsia-600/10 blur-[100px] " />
+          </div>
         <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
           <div className="flex items-center justify-between">
             <div>

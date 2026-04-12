@@ -637,11 +637,10 @@ export default function FinishedProductDefectReportPage() {
 		<AppSidebar variant="inset" />
 		<SidebarInset>
 		<SiteHeader className="relative overflow-hidden z-1001 bg-zinc-950" />
-		<div className="pointer-events-none fixed inset-0 overflow-hidden">
-		<div className="absolute -top-[10%] -left-[10%] h-50 w-50 rounded-full bg-purple-600/20 blur-[120px] animate-pulse-glow-1" />
-		<div className="absolute top-[20%] -right-[5%] h-100 w-100 rounded-full bg-indigo-500/15 blur-[100px] animate-pulse-glow-2" />
-		<div className="absolute bottom-[10%] -left-[5%] h-50 w-75 rounded-full bg-fuchsia-600/10 blur-[80px] animate-pulse-glow-3" />
-		</div>
+		<div className="pointer-events-none fixed inset-0 overflow-hidden z-0">            
+            <div className="absolute top-[30%] -right-[10%] h-[400px] w-[400px] rounded-full bg-indigo-500/15 blur-[120px] " />
+            <div className="absolute bottom-[10%] left-[20%] h-[300px] w-[300px] rounded-full bg-fuchsia-600/10 blur-[100px] " />
+          </div>
 		
 		<div className="flex-1 p-4 md:p-8 pt-6 relative z-10">
 		{/* Header with title and actions */}

@@ -628,34 +628,17 @@ export default function DefectReportPage() {
   // Main UI
   return (
     <>
-      <style jsx global>{`
-        @keyframes pulse-glow-1 {
-          0%, 100% { opacity: 0.4; transform: scale(1); }
-          50% { opacity: 0.8; transform: scale(1.2); }
-        }
-        @keyframes pulse-glow-2 {
-          0%, 100% { opacity: 0.3; transform: scale(1); }
-          50% { opacity: 0.7; transform: scale(1.25); }
-        }
-        @keyframes pulse-glow-3 {
-          0%, 100% { opacity: 0.25; transform: scale(1); }
-          50% { opacity: 0.6; transform: scale(1.2); }
-        }
-        .animate-pulse-glow-1 { animation: pulse-glow-1 4s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
-        .animate-pulse-glow-2 { animation: pulse-glow-2 5s cubic-bezier(0.4, 0, 0.6, 1) infinite 0.5s; }
-        .animate-pulse-glow-3 { animation: pulse-glow-3 4.5s cubic-bezier(0.4, 0, 0.6, 1) infinite 1s; }
-      `}</style>
+     
       
       <SidebarProvider>
         <AppSidebar variant="inset" />
         <SidebarInset>
           <SiteHeader className="relative overflow-hidden" />
           
-          {/* Background blur circles */}
-          <div className="pointer-events-none fixed inset-0 overflow-hidden z-0">
-            <div className="absolute -top-[10%] -left-[10%] h-96 w-96 rounded-full bg-primary/10 dark:bg-primary/20 blur-[80px] animate-pulse-glow-1" />
-            <div className="absolute top-[20%] -right-[5%] h-80 w-80 rounded-full bg-purple-500/10 dark:bg-purple-500/20 blur-[70px] animate-pulse-glow-2" />
-            <div className="absolute bottom-[10%] -left-[5%] h-72 w-72 rounded-full bg-blue-500/10 dark:bg-blue-500/20 blur-[60px] animate-pulse-glow-3" />
+            <div className="pointer-events-none fixed inset-0 overflow-hidden z-0">
+            
+            <div className="absolute top-[30%] -right-[10%] h-[400px] w-[400px] rounded-full bg-indigo-500/15 blur-[120px] " />
+            <div className="absolute bottom-[10%] left-[20%] h-[300px] w-[300px] rounded-full bg-fuchsia-600/10 blur-[100px] " />
           </div>
           
           <div className="flex-1 p-4 md:p-8 pt-6 relative z-10">
