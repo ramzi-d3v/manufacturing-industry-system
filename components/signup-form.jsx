@@ -6,9 +6,8 @@ import { auth, sendVerificationEmail } from "@/lib/firebase";
 import {
   createUserWithEmailAndPassword,
   updateProfile,
-  signInWithRedirect,
+  signInWithPopup,
   GoogleAuthProvider,
-  getRedirectResult,
   onAuthStateChanged,
 } from "firebase/auth";
 
@@ -33,25 +32,9 @@ export function SignupForm({ className, ...props }) {
     setIsClient(true);
   }, []);
 
-  // Handle Google Redirect Result
+  // Handle Auth State Changes
   useEffect(() => {
     if (!isClient) return;
-
-    const handleRedirectResult = async () => {
-      try {
-        const result = await getRedirectResult(auth);
-        if (result) {
-          toast.success("Signed in with Google successfully!");
-          router.push("/complite-profile");
-        }
-      } catch (err) {
-        console.error(err);
-        toast.error("Google sign-in failed.");
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    handleRedirectResult();
 
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (user && !isLoading) {
@@ -108,11 +91,36 @@ export function SignupForm({ className, ...props }) {
   const handleGoogleSignIn = async () => {
     if (!isClient) return;
     const provider = new GoogleAuthProvider();
+    provider.addScope("profile");
+    provider.addScope("email");
     try {
       setIsLoading(true);
-      await signInWithRedirect(auth, provider);
+      const result = await signInWithPopup(auth, provider);
+      if (result.user) {
+        // Update user profile with Google info
+        const user = result.user;
+        if (!user.displayName) {
+          await updateProfile(user, { 
+            displayName: user.email?.split("@")[0] || "User",
+            photoURL: user.photoURL || null
+          });
+        }
+        toast.success("Signed in with Google successfully!");
+        router.push("/complite-profile");
+      }
     } catch (err) {
-      toast.error("Google sign-in failed.");
+      console.error("Google sign-in error:", err);
+      // Don't show error for user-closed popup - it's intentional
+      if (err.code === "auth/popup-closed-by-user") {
+        // Silently handle - user intentionally closed the popup
+        console.log("User closed Google sign-in popup");
+      } else if (err.code === "auth/popup-blocked") {
+        toast.error("Popup was blocked. Please allow popups for this site.");
+      } else if (err.code === "auth/operation-not-allowed") {
+        toast.error("Google sign-in is not enabled. Please contact support.");
+      } else {
+        toast.error("Google sign-in failed. Please try again.");
+      }
       setIsLoading(false);
     }
   };

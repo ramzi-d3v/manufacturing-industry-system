@@ -4,9 +4,8 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { 
   signInWithEmailAndPassword, 
-  signInWithRedirect,
+  signInWithPopup,
   GoogleAuthProvider,
-  getRedirectResult,
   onAuthStateChanged
 } from "firebase/auth"; 
 import { auth } from "@/lib/firebase"; 
@@ -31,23 +30,9 @@ export function LoginForm({ className, ...props }) {
     setIsClient(true);
   }, []);
 
-  // Handle Google Redirect Result – only after client mount
+  // Handle Auth State Changes
   useEffect(() => {
     if (!isClient) return;
-
-    const handleRedirectResult = async () => {
-      try {
-        const result = await getRedirectResult(auth);
-        if (result) {
-          toast.success("Logged in with Google!");
-          router.replace("/");
-        }
-      } catch (err) {
-        console.error(err);
-        toast.error("Google sign-in failed.");
-      }
-    };
-    handleRedirectResult();
 
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (user && !loading && !guestLoading) {
@@ -92,12 +77,28 @@ export function LoginForm({ className, ...props }) {
   const handleGoogleLogin = async () => {
     if (!isClient) return;
     const provider = new GoogleAuthProvider();
+    provider.addScope("profile");
+    provider.addScope("email");
     try {
       setLoading(true);
-      await signInWithRedirect(auth, provider);
-      // Redirect happens; loading will be cleared after return
+      const result = await signInWithPopup(auth, provider);
+      if (result.user) {
+        toast.success("Logged in with Google!");
+        router.replace("/");
+      }
     } catch (err) {
-      toast.error("Google sign-in failed.");
+      console.error("Google sign-in error:", err);
+      // Don't show error for user-closed popup - it's intentional
+      if (err.code === "auth/popup-closed-by-user") {
+        // Silently handle - user intentionally closed the popup
+        console.log("User closed Google sign-in popup");
+      } else if (err.code === "auth/popup-blocked") {
+        toast.error("Popup was blocked. Please allow popups for this site.");
+      } else if (err.code === "auth/operation-not-allowed") {
+        toast.error("Google sign-in is not enabled. Please contact support.");
+      } else {
+        toast.error("Google sign-in failed. Please try again.");
+      }
       setLoading(false);
     }
   };

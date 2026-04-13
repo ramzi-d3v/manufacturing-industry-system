@@ -52,6 +52,9 @@ import {
   query,
   onSnapshot,
   orderBy,
+  where,
+  limit,
+  Timestamp,
 } from "firebase/firestore"
 
 const jetBrainsMono = JetBrains_Mono({
@@ -59,15 +62,24 @@ const jetBrainsMono = JetBrains_Mono({
   weight: ["400", "700"],
 })
 
-// Static Activities
-const recentActivities = [
-  { id: 1, action: "New order #ORD-2024-001 received", time: "10 minutes ago", type: "order", user: "Customer Portal" },
-  { id: 2, action: "Warehouse B stock updated (500 units)", time: "1 hour ago", type: "inventory", user: "System" },
-  { id: 3, action: "Supplier 'ABC Metals' contract renewed", time: "3 hours ago", type: "supplier", user: "Procurement" },
-  { id: 4, action: "Distributor 'City Dist' reported delivery issue", time: "5 hours ago", type: "issue", user: "Support" },
-  { id: 5, action: "New supplier registered: XYZ Logistics", time: "8 hours ago", type: "supplier", user: "Admin" },
-  { id: 6, action: "Monthly inventory report generated", time: "12 hours ago", type: "report", user: "System" },
-]
+// Format relative time helper
+const formatRelativeTime = (timestamp) => {
+  if (!timestamp) return "Just now"
+
+  const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp)
+  const now = new Date()
+  const diffMs = now - date
+  const diffSec = Math.floor(diffMs / 1000)
+  const diffMin = Math.floor(diffSec / 60)
+  const diffHour = Math.floor(diffMin / 60)
+  const diffDay = Math.floor(diffHour / 24)
+
+  if (diffSec < 60) return "Just now"
+  if (diffMin < 60) return `${diffMin}m ago`
+  if (diffHour < 24) return `${diffHour}h ago`
+  if (diffDay < 7) return `${diffDay}d ago`
+  return date.toLocaleDateString()
+}
 
 export default function DashboardPage() {
   const [user, loadingAuth] = useAuthState(auth)
@@ -75,34 +87,178 @@ export default function DashboardPage() {
   const [suppliers, setSuppliers] = useState([])
   const [distributors, setDistributors] = useState([])
   const [loadingData, setLoadingData] = useState(true)
-  const [activities] = useState(recentActivities)
+  const [activities, setActivities] = useState([])
 
   // Fetch real data from Firestore
   useEffect(() => {
     if (!user) return
+
+    const activitiesList = []
+
+    // Fetch Warehouses
     const warehousesRef = collection(db, "warehouses", user.uid, "list")
-    const qWarehouses = query(warehousesRef, orderBy("createdAt", "desc"))
+    const qWarehouses = query(warehousesRef, orderBy("createdAt", "desc"), limit(100))
     const unsubWarehouses = onSnapshot(qWarehouses, (snapshot) => {
-      setWarehouses(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })))
+      const warehouseData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+      setWarehouses(warehouseData)
+
+      // Add warehouse activities
+      snapshot.docChanges().forEach((change) => {
+        if (change.type === "added" || change.type === "modified") {
+          const wh = change.doc.data()
+          if (change.type === "added") {
+            activitiesList.push({
+              id: `warehouse_${change.doc.id}`,
+              action: `New warehouse '${wh.name}' added`,
+              time: formatRelativeTime(wh.createdAt || Timestamp.now()),
+              timestamp: wh.createdAt || Timestamp.now(),
+              type: "warehouse",
+              user: "System",
+            })
+          }
+        }
+      })
+
+      updateActivitiesList()
       setLoadingData(false)
     })
 
+    // Fetch Suppliers
     const suppliersRef = collection(db, "suppliers", user.uid, "list")
-    const qSuppliers = query(suppliersRef, orderBy("createdAt", "desc"))
+    const qSuppliers = query(suppliersRef, orderBy("createdAt", "desc"), limit(100))
     const unsubSuppliers = onSnapshot(qSuppliers, (snapshot) => {
-      setSuppliers(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })))
+      const supplierData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+      setSuppliers(supplierData)
+
+      // Add supplier activities
+      snapshot.docChanges().forEach((change) => {
+        if (change.type === "added") {
+          const sup = change.doc.data()
+          activitiesList.push({
+            id: `supplier_${change.doc.id}`,
+            action: `New supplier '${sup.name}' registered`,
+            time: formatRelativeTime(sup.createdAt || Timestamp.now()),
+            timestamp: sup.createdAt || Timestamp.now(),
+            type: "supplier",
+            user: "Procurement",
+          })
+        }
+      })
+
+      updateActivitiesList()
     })
 
+    // Fetch Distributors
     const distributorsRef = collection(db, "distributors", user.uid, "list")
-    const qDistributors = query(distributorsRef, orderBy("createdAt", "desc"))
+    const qDistributors = query(distributorsRef, orderBy("createdAt", "desc"), limit(100))
     const unsubDistributors = onSnapshot(qDistributors, (snapshot) => {
-      setDistributors(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })))
+      const distributorData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+      setDistributors(distributorData)
+
+      // Add distributor activities
+      snapshot.docChanges().forEach((change) => {
+        if (change.type === "added") {
+          const dist = change.doc.data()
+          activitiesList.push({
+            id: `distributor_${change.doc.id}`,
+            action: `New distributor '${dist.name}' added`,
+            time: formatRelativeTime(dist.createdAt || Timestamp.now()),
+            timestamp: dist.createdAt || Timestamp.now(),
+            type: "distributor",
+            user: "Admin",
+          })
+        }
+      })
+
+      updateActivitiesList()
     })
+
+    // Fetch Raw Materials
+    const materialsRef = collection(db, "rawMaterials", user.uid, "materials")
+    const qMaterials = query(materialsRef, orderBy("createdAt", "desc"), limit(50))
+    const unsubMaterials = onSnapshot(qMaterials, (snapshot) => {
+      snapshot.docChanges().forEach((change) => {
+        if (change.type === "added") {
+          const material = change.doc.data()
+          activitiesList.push({
+            id: `material_${change.doc.id}`,
+            action: `New raw material '${material.name}' added to inventory`,
+            time: formatRelativeTime(material.createdAt || Timestamp.now()),
+            timestamp: material.createdAt || Timestamp.now(),
+            type: "inventory",
+            user: "System",
+          })
+        }
+      })
+
+      updateActivitiesList()
+    })
+
+    // Fetch Finished Goods
+    const finishedGoodsRef = collection(db, "finishedGoods", user.uid, "materials")
+    const qFinishedGoods = query(finishedGoodsRef, orderBy("createdAt", "desc"), limit(50))
+    const unsubFinishedGoods = onSnapshot(qFinishedGoods, (snapshot) => {
+      snapshot.docChanges().forEach((change) => {
+        if (change.type === "added") {
+          const good = change.doc.data()
+          activitiesList.push({
+            id: `finished_${change.doc.id}`,
+            action: `Production completed for '${good.name}'`,
+            time: formatRelativeTime(good.createdAt || Timestamp.now()),
+            timestamp: good.createdAt || Timestamp.now(),
+            type: "report",
+            user: "Production",
+          })
+        }
+      })
+
+      updateActivitiesList()
+    })
+
+    // Fetch Defect Reports
+    const defectsRef = collection(db, "defectReports")
+    const qDefects = query(defectsRef, where("userId", "==", user.uid), orderBy("createdAt", "desc"), limit(50))
+    const unsubDefects = onSnapshot(
+      qDefects,
+      (snapshot) => {
+        snapshot.docChanges().forEach((change) => {
+          if (change.type === "added") {
+            const defect = change.doc.data()
+            activitiesList.push({
+              id: `defect_${change.doc.id}`,
+              action: `Defect reported for '${defect.materialName}' - ${defect.defectType}`,
+              time: formatRelativeTime(defect.createdAt || Timestamp.now()),
+              timestamp: defect.createdAt || Timestamp.now(),
+              type: "issue",
+              user: "Quality Control",
+            })
+          }
+        })
+
+        updateActivitiesList()
+      },
+      (error) => {
+        console.warn("Defect reports index not created yet:", error.message)
+      }
+    )
+
+    // Function to update and sort activities
+    const updateActivitiesList = () => {
+      const sorted = [...activitiesList].sort((a, b) => {
+        const timeA = a.timestamp?.toDate?.() || new Date(a.timestamp)
+        const timeB = b.timestamp?.toDate?.() || new Date(b.timestamp)
+        return timeB - timeA
+      })
+      setActivities(sorted.slice(0, 6)) // Show only 6 recent activities
+    }
 
     return () => {
       unsubWarehouses()
       unsubSuppliers()
       unsubDistributors()
+      unsubMaterials()
+      unsubFinishedGoods()
+      unsubDefects()
     }
   }, [user])
 

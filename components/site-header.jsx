@@ -448,8 +448,7 @@ export function SiteHeader() {
                     className="w-full text-xs"
                     onClick={() => {
                       setShowNotifications(false);
-                      // Navigate to notifications page if you have one
-                      // window.location.href = "/notifications";
+                      window.location.href = "/notifications";
                     }}
                   >
                     View all notifications
