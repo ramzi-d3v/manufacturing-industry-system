@@ -635,14 +635,18 @@ export default function LandingPage() {
                       </div>
                     </div>
                     <div className="flex gap-2">
-                      <Button variant="outline" size="sm" className="h-9 gap-2">
-                        <IconBell className="h-4 w-4" />
-                        <span className="hidden sm:inline">Notifications</span>
-                      </Button>
-                      <Button size="sm" className="h-9 gap-2 bg-gradient-to-r from-purple-500 to-indigo-600">
-                        <IconSparkles className="h-4 w-4" />
-                        <span className="hidden sm:inline">Upgrade Plan</span>
-                      </Button>
+                      <Link href="/notifications">
+                        <Button variant="outline" size="sm" className="h-9 gap-2">
+                          <IconBell className="h-4 w-4" />
+                          <span className="hidden sm:inline">Notifications</span>
+                        </Button>
+                      </Link>
+                      <Link href="/">
+                        <Button size="sm" className="h-9 gap-2 bg-gradient-to-r from-purple-500 to-indigo-600">
+                          <IconSparkles className="h-4 w-4" />
+                          <span className="hidden sm:inline">Upgrade Plan</span>
+                        </Button>
+                      </Link>
                     </div>
                   </div>
 
@@ -870,7 +874,7 @@ export default function LandingPage() {
 
                       {/* Recent Activity Card */}
                       <Card className="bg-white/5 border-white/10 backdrop-blur-sm">
-                        <CardHeader className="pb-2 sticky top-0 bg-inherit z-10">
+                        <CardHeader className="pb-3 pt-4 px-4 sticky top-0 bg-inherit z-10">
                           <div className="flex items-center justify-between">
                             <CardTitle className="text-sm font-medium flex items-center gap-2">
                               <IconClipboardList className="h-4 w-4 text-green-400" />
@@ -881,7 +885,7 @@ export default function LandingPage() {
                               Live
                             </Badge>
                           </div>
-                          <CardDescription className="text-[10px]">Latest system updates and events</CardDescription>
+                          <CardDescription className="text-xs">Latest system updates and events</CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-2">
                           {activities.map((activity) => (
@@ -892,9 +896,9 @@ export default function LandingPage() {
                               <div className="flex-1">
                                 <p className="text-xs">{activity.action}</p>
                                 <div className="flex items-center gap-1 mt-0.5">
-                                  <span className="text-[8px] text-muted-foreground">{activity.time}</span>
-                                  <span className="text-[8px] text-muted-foreground">•</span>
-                                  <span className="text-[8px] text-muted-foreground">{activity.user}</span>
+                                  <span className="text-xs text-muted-foreground">{activity.time}</span>
+                                  <span className="text-xs text-muted-foreground">•</span>
+                                  <span className="text-xs text-muted-foreground">{activity.user}</span>
                                 </div>
                               </div>
                             </div>

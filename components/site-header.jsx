@@ -89,6 +89,14 @@ export function SiteHeader() {
   const [unreadCount, setUnreadCount] = useState(0);
   const pathname = usePathname();
 
+  // Store notifications by source for proper management
+  const [allNotifications, setAllNotifications] = useState({
+    materials: [],
+    defects: [],
+    finished: [],
+    energy: [],
+  });
+
   // Format relative time
   const formatRelativeTime = (timestamp) => {
     if (!timestamp) return "Just now";
@@ -108,13 +116,27 @@ export function SiteHeader() {
     return date.toLocaleDateString();
   };
 
+  // Update combined notifications whenever any source changes
+  useEffect(() => {
+    const combined = [
+      ...allNotifications.materials,
+      ...allNotifications.defects,
+      ...allNotifications.finished,
+      ...allNotifications.energy,
+    ].sort((a, b) => {
+      const timeA = a.timestamp?.toDate?.() || new Date(a.timestamp);
+      const timeB = b.timestamp?.toDate?.() || new Date(b.timestamp);
+      return timeB - timeA;
+    });
+
+    setNotifications(combined.slice(0, 10));
+    setUnreadCount(combined.filter(n => !n.read).length);
+  }, [allNotifications]);
+
   // Fetch real-time notifications
   useEffect(() => {
     if (!user) return;
 
-    // Listen for notifications from various collections
-    const notificationsList = [];
-    
     // 1. Raw Materials notifications
     const materialsRef = collection(db, "rawMaterials", user.uid, "materials");
     const materialsQuery = query(
@@ -124,33 +146,20 @@ export function SiteHeader() {
     );
     
     const unsubscribeMaterials = onSnapshot(materialsQuery, (snapshot) => {
-      snapshot.docChanges().forEach((change) => {
-        if (change.type === "added") {
-          const material = change.doc.data();
-          notificationsList.push({
-            id: `material_${change.doc.id}`,
-            type: "material_added",
-            title: "New Material Added",
-            message: `${material.name} has been added to inventory`,
-            timestamp: material.createdAt || Timestamp.now(),
-            read: false,
-            link: `/batches/raw-material`,
-          });
-        } else if (change.type === "modified") {
-          const material = change.doc.data();
-          if (material.status === "Low Stock") {
-            notificationsList.push({
-              id: `low_stock_${change.doc.id}`,
-              type: "low_stock",
-              title: "Low Stock Alert",
-              message: `${material.name} is running low (${material.currentStock} ${material.unit} remaining)`,
-              timestamp: Timestamp.now(),
-              read: false,
-              link: `/batches/raw-material`,
-            });
-          }
-        }
+      const materialNotifications = [];
+      snapshot.docs.forEach((doc) => {
+        const material = doc.data();
+        materialNotifications.push({
+          id: `material_${doc.id}`,
+          type: "material_added",
+          title: "New Material Added",
+          message: `${material.name} has been added to inventory`,
+          timestamp: material.createdAt || Timestamp.now(),
+          read: false,
+          link: `/raw-materials/inventory`,
+        });
       });
+      setAllNotifications(prev => ({ ...prev, materials: materialNotifications }));
     });
 
     // 2. Defect Reports notifications
@@ -165,27 +174,27 @@ export function SiteHeader() {
     const unsubscribeDefects = onSnapshot(
       defectsQuery,
       (snapshot) => {
-        snapshot.docChanges().forEach((change) => {
-          if (change.type === "added") {
-            const defect = change.doc.data();
-            notificationsList.push({
-              id: `defect_${change.doc.id}`,
-              type: "defect_reported",
-              title: "New Defect Reported",
-              message: `${defect.materialName} - ${defect.defectType} (${defect.quantity} ${defect.unit})`,
-              timestamp: defect.createdAt || Timestamp.now(),
-              read: false,
-              link: `/batches/raw-material/defect-report`,
-            });
-          }
+        const defectNotifications = [];
+        snapshot.docs.forEach((doc) => {
+          const defect = doc.data();
+          defectNotifications.push({
+            id: `defect_${doc.id}`,
+            type: "defect_reported",
+            title: "New Defect Reported",
+            message: `${defect.materialName} - ${defect.defectType} (${defect.quantity} ${defect.unit})`,
+            timestamp: defect.createdAt || Timestamp.now(),
+            read: false,
+            link: `/raw-materials/defect-report`,
+          });
         });
+        setAllNotifications(prev => ({ ...prev, defects: defectNotifications }));
       },
       (error) => {
-        console.warn("Defect reports index not created yet:", error.message);
+        console.warn("Defect reports error:", error.message);
       }
     );
 
-    // 3. Finished Goods notifications (if you have this collection)
+    // 3. Finished Goods notifications
     const finishedGoodsRef = collection(db, "finishedGoods", user.uid, "materials");
     const finishedGoodsQuery = query(
       finishedGoodsRef,
@@ -194,23 +203,23 @@ export function SiteHeader() {
     );
     
     const unsubscribeFinished = onSnapshot(finishedGoodsQuery, (snapshot) => {
-      snapshot.docChanges().forEach((change) => {
-        if (change.type === "added") {
-          const good = change.doc.data();
-          notificationsList.push({
-            id: `finished_${change.doc.id}`,
-            type: "production_completed",
-            title: "Production Completed",
-            message: `${good.name} has been added to finished goods`,
-            timestamp: good.createdAt || Timestamp.now(),
-            read: false,
-            link: `/batches/finished-goods`,
-          });
-        }
+      const finishedNotifications = [];
+      snapshot.docs.forEach((doc) => {
+        const good = doc.data();
+        finishedNotifications.push({
+          id: `finished_${doc.id}`,
+          type: "production_completed",
+          title: "Production Completed",
+          message: `${good.name} has been added to finished goods`,
+          timestamp: good.createdAt || Timestamp.now(),
+          read: false,
+          link: `/finished-products/inventory`,
+        });
       });
+      setAllNotifications(prev => ({ ...prev, finished: finishedNotifications }));
     });
 
-    // 4. Energy Consumption alerts (if you have this collection)
+    // 4. Energy Consumption alerts
     const energyRef = collection(db, "energyConsumption");
     const energyQuery = query(
       energyRef,
@@ -222,40 +231,27 @@ export function SiteHeader() {
     const unsubscribeEnergy = onSnapshot(
       energyQuery,
       (snapshot) => {
-        snapshot.docChanges().forEach((change) => {
-          if (change.type === "added") {
-            const energy = change.doc.data();
-            if (energy.consumption > energy.threshold) {
-              notificationsList.push({
-                id: `energy_${change.doc.id}`,
-                type: "energy_alert",
-                title: "High Energy Consumption",
-                message: `Energy usage exceeded threshold: ${energy.consumption} kWh`,
-                timestamp: energy.timestamp || Timestamp.now(),
-                read: false,
-                link: `/energy`,
-              });
-            }
+        const energyNotifications = [];
+        snapshot.docs.forEach((doc) => {
+          const energy = doc.data();
+          if (energy.consumption > energy.threshold) {
+            energyNotifications.push({
+              id: `energy_${doc.id}`,
+              type: "energy_alert",
+              title: "High Energy Consumption",
+              message: `Energy usage exceeded threshold: ${energy.consumption} kWh`,
+              timestamp: energy.timestamp || Timestamp.now(),
+              read: false,
+              link: `/energy-consumption`,
+            });
           }
         });
+        setAllNotifications(prev => ({ ...prev, energy: energyNotifications }));
       },
       (error) => {
-        console.warn("Energy consumption index not created yet:", error.message);
+        console.warn("Energy consumption error:", error.message);
       }
     );
-
-    // Combine and sort all notifications
-    const combineNotifications = () => {
-      const sorted = [...notificationsList].sort((a, b) => {
-        const timeA = a.timestamp?.toDate?.() || new Date(a.timestamp);
-        const timeB = b.timestamp?.toDate?.() || new Date(b.timestamp);
-        return timeB - timeA;
-      });
-      setNotifications(sorted.slice(0, 10));
-      setUnreadCount(sorted.filter(n => !n.read).length);
-    };
-
-    combineNotifications();
 
     // Cleanup subscriptions
     return () => {
@@ -284,8 +280,36 @@ export function SiteHeader() {
     setUnreadCount(0);
   };
 
+  // Page title mapping for better display
+  const pageNames = {
+    '/': 'Dashboard',
+    '/dashboard': 'Dashboard',
+    '/home': 'Home',
+    '/admin': 'Admin',
+    '/complite-profile': 'Complete Profile',
+    '/energy-consumption': 'Energy Consumption',
+    '/finance': 'Finance',
+    '/finished-products': 'Finished Products',
+    '/finished-products/inventory': 'Inventory',
+    '/finished-products/defect-report': 'Defect Report',
+    '/flow': 'Flow',
+    '/notifications': 'Notifications',
+    '/products-analytics': 'Products Analytics',
+    '/raw-materials': 'Raw Materials',
+    '/raw-materials/inventory': 'Inventory',
+    '/raw-materials/defect-report': 'Defect Report',
+    '/settings': 'Settings',
+    '/signin': 'Sign In',
+    '/signup': 'Sign Up',
+    '/storage': 'Storage',
+  };
+
   // Get current page name
   const getCurrentPageName = () => {
+    if (pageNames[pathname]) {
+      return pageNames[pathname];
+    }
+    
     const path = pathname.replace(/^\//, '');
     if (!path) return "Dashboard";
     
@@ -299,7 +323,8 @@ export function SiteHeader() {
   };
 
   const currentPage = getCurrentPageName();
-  const isHome = pathname === "/dashboard" || pathname === "/home";
+  const isHome = pathname === "/" || pathname === "/dashboard" || pathname === "/home";
+  const homeLink = "/dashboard";
 
   // Get notification icon component
   const getNotificationIcon = (type) => {
@@ -332,11 +357,11 @@ export function SiteHeader() {
                 <>
                   <BreadcrumbItem className="gap-0.5">
                     <BreadcrumbLink 
-                      href="/dashboard" 
+                      href={homeLink} 
                       className="flex items-center gap-0.5 hover:text-purple-400 transition-colors"
                     >
                       <Home className="size-3.5" />
-                      <span>Home</span>
+                      <span>Dashboard</span>
                     </BreadcrumbLink>
                   </BreadcrumbItem>
                   <BreadcrumbSeparator className="mx-0">
