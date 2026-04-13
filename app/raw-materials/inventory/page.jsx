@@ -24,6 +24,7 @@ import {
   IconTrendingDown,
   IconMinus,
   IconBuildingWarehouse,
+  IconDownload,
 } from "@tabler/icons-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -102,13 +103,14 @@ export default function RawMaterialPage() {
   const [loadingSuppliers, setLoadingSuppliers] = useState(false);
   const [isPopupOpen, setIsPopupOpen] = useState(false);
   const [editingMaterial, setEditingMaterial] = useState(null);
+  const [exporting, setExporting] = useState(false);
   
   // Filter and sort states
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [sortBy, setSortBy] = useState("newest");
-  
+
   const [stats, setStats] = useState({
     totalMaterials: 0,
     totalQuantity: 0,
@@ -122,6 +124,94 @@ export default function RawMaterialPage() {
     inStockCount: 0,
     outOfStockCount: 0,
   });
+
+  // Export to CSV function
+  const exportToCSV = () => {
+    if (filteredMaterials.length === 0) {
+      toast.error("No data to export");
+      return;
+    }
+
+    setExporting(true);
+    try {
+      // Define CSV headers
+      const headers = [
+        "Material Name",
+        "Batch Number",
+        "Category",
+        "Type",
+        "Unit",
+        "Quantity",
+        "Unit Price (USD)",
+        "Total Value (USD)",
+        "Status",
+        "Supplier Name",
+        "Supplier Contact",
+        "Supplier Phone",
+        "Supplier Email",
+        "Warehouse Name",
+        "Warehouse Location",
+        "Storage Location",
+        "Shelf Location",
+        "Description",
+        "Created At"
+      ];
+
+      // Map materials to CSV rows
+      const rows = filteredMaterials.map(material => [
+        material.name || "",
+        material.batchNumber || "",
+        material.category || "",
+        material.type || "",
+        material.unit || "kg",
+        material.quantity || 0,
+        material.unitPrice || 0,
+        ((material.quantity || 0) * (material.unitPrice || 0)).toFixed(2),
+        material.status || "Unknown",
+        material.supplierName || "",
+        material.supplierContact || "",
+        material.supplierPhone || "",
+        material.supplierEmail || "",
+        material.warehouseName || "Not assigned",
+        material.location || "",
+        material.storageLocationName || "",
+        material.shelfLocation || "",
+        material.description || "",
+        material.createdAt?.toDate ? material.createdAt.toDate().toLocaleDateString() : ""
+      ]);
+
+      // Create CSV content
+      const csvContent = [
+        headers.join(","),
+        ...rows.map(row => 
+          row.map(cell => {
+            if (typeof cell === "string" && (cell.includes(",") || cell.includes('"') || cell.includes("\n"))) {
+              return `"${cell.replace(/"/g, '""')}"`;
+            }
+            return cell;
+          }).join(",")
+        )
+      ].join("\n");
+
+      // Add BOM for UTF-8 encoding and create download
+      const blob = new Blob(["\uFEFF" + csvContent], { type: "text/csv;charset=utf-8;" });
+      const link = document.createElement("a");
+      const url = URL.createObjectURL(blob);
+      link.href = url;
+      link.setAttribute("download", `raw_materials_${new Date().toISOString().split("T")[0]}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      
+      toast.success(`Exported ${filteredMaterials.length} materials successfully!`);
+    } catch (error) {
+      console.error("Export error:", error);
+      toast.error("Failed to export data");
+    } finally {
+      setExporting(false);
+    }
+  };
 
   // Get current user and fetch suppliers from Firestore
   useEffect(() => {
@@ -372,7 +462,6 @@ export default function RawMaterialPage() {
           <div className="flex-1 p-8 flex items-center justify-center">
             <div className="text-center">
               <IconLoader className="animate-spin text-primary" size={32} />
-              
             </div>
           </div>
         </SidebarInset>
@@ -430,9 +519,9 @@ export default function RawMaterialPage() {
       <SidebarInset>
         <SiteHeader className="relative overflow-hidden" />
         <div className="pointer-events-none fixed inset-0 overflow-hidden z-0">           
-            <div className="absolute top-[30%] -right-[10%] h-[400px] w-[400px] rounded-full bg-indigo-500/15 blur-[120px] " />
-            <div className="absolute bottom-[10%] left-[20%] h-[300px] w-[300px] rounded-full bg-fuchsia-600/10 blur-[100px] " />
-          </div>
+          <div className="absolute top-[30%] -right-[10%] h-[400px] w-[400px] rounded-full bg-indigo-500/15 blur-[120px] " />
+          <div className="absolute bottom-[10%] left-[20%] h-[300px] w-[300px] rounded-full bg-fuchsia-600/10 blur-[100px] " />
+        </div>
         <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
           <div className="flex items-center justify-between">
             <div>
@@ -442,6 +531,15 @@ export default function RawMaterialPage() {
               </p>
             </div>
             <div className="flex gap-2">
+              <Button 
+                onClick={exportToCSV} 
+                variant="outline" 
+                className="cursor-pointer"
+                disabled={exporting || filteredMaterials.length === 0}
+              >
+                <IconDownload className="mr-2 h-4 w-4" />
+                {exporting ? "Exporting..." : `Export (${filteredMaterials.length})`}
+              </Button>
               <Button onClick={handleAddClick} className="cursor-pointer">
                 <IconPlus className="mr-2 h-4 w-4" />
                 Add Material
@@ -660,6 +758,7 @@ export default function RawMaterialPage() {
                 >
                   <IconRefresh className="h-4 w-4" />
                 </Button>
+                
               </div>
             </div>
 

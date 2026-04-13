@@ -177,7 +177,7 @@ function DraggableRow({ row }) {
   );
 }
 
-// View Product Dialog with Glassmorphism
+// View Product Dialog (Edit & Preview functionality only here, not in table)
 function ProductViewerDialog({ product, open, onOpenChange, onEdit, onDelete }) {
   if (!product) return null;
 
@@ -411,7 +411,7 @@ function ProductViewerDialog({ product, open, onOpenChange, onEdit, onDelete }) 
   );
 }
 
-// Edit Product Dialog with Glassmorphism
+// Edit Product Dialog (only edit functionality, not displayed in table)
 function ProductEditor({ product, open, onOpenChange, onSave, categories }) {
   const [formData, setFormData] = React.useState(null);
 
@@ -901,7 +901,7 @@ export function FinishedProductTable({
         header: "Price",
         cell: ({ row }) => (
           <div className="text-sm font-medium flex items-center gap-1 whitespace-nowrap">
-            <IconCurrencyDollar className="h-3.5 w-3.5 shrink-0" />
+            <IconCurrencyDollar className="h-3.5 w-3.5 text-muted-foreground" />
             <span>${row.original.sellingPrice?.toLocaleString()}</span>
           </div>
         ),
@@ -1130,7 +1130,7 @@ export function FinishedProductTable({
         </div>
       </div>
 
-      {/* View Dialog */}
+      {/* View Dialog - Contains both view and edit functionality */}
       <ProductViewerDialog
         product={viewingProduct}
         open={viewDialogOpen}
@@ -1139,7 +1139,7 @@ export function FinishedProductTable({
         onDelete={handleDelete}
       />
 
-      {/* Edit Dialog */}
+      {/* Edit Dialog - Separate dialog for editing only */}
       <ProductEditor
         product={editingProduct}
         open={editDialogOpen}

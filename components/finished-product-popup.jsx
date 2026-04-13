@@ -42,12 +42,15 @@ import {
   IconTruck,
   IconMapPin,
   IconLoader,
+  IconLocation,
+  IconLayoutGrid,
+  IconEdit,
 } from "@tabler/icons-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { auth, db } from "@/lib/firebase";
 import { useAuthState } from "react-firebase-hooks/auth";
-import { collection, getDocs, query, limit } from "firebase/firestore";
+import { collection, getDocs, query, limit, doc, updateDoc } from "firebase/firestore";
 
 // Quality grade options
 const qualityGradeOptions = [
@@ -77,6 +80,13 @@ export function FinishedProductPopup({
   const [loading, setLoading] = useState(false);
   const [loadingLocations, setLoadingLocations] = useState(false);
   const [warehouses, setWarehouses] = useState([]);
+  const [storageLocations, setStorageLocations] = useState([]);
+  const [loadingStorage, setLoadingStorage] = useState(false);
+  const [editingWarehouse, setEditingWarehouse] = useState(false);
+  const [customWarehouse, setCustomWarehouse] = useState({
+    name: "",
+    location: "",
+  });
   const [formData, setFormData] = useState({
     name: "",
     batchNumber: "",
@@ -94,19 +104,20 @@ export function FinishedProductPopup({
     location: "",
     warehouseId: "",
     warehouseName: "",
+    storageLocationId: "",
+    storageLocationName: "",
     shelfLocation: "",
   });
 
   const [isEditing, setIsEditing] = useState(false);
 
-  // Fetch warehouses from Firestore with error handling
+  // Fetch warehouses from Firestore
   useEffect(() => {
     if (!user || !open) return;
 
     const fetchWarehouses = async () => {
       setLoadingLocations(true);
       try {
-        // Fetch warehouses from warehouses/{userId}/list
         const warehousesRef = collection(db, "warehouses", user.uid, "list");
         const q = query(warehousesRef, limit(100));
         const warehousesSnapshot = await getDocs(q);
@@ -129,6 +140,35 @@ export function FinishedProductPopup({
     fetchWarehouses();
   }, [user, open]);
 
+  // Fetch storage locations when warehouse is selected
+  useEffect(() => {
+    if (!user || !formData.warehouseId || !open) {
+      setStorageLocations([]);
+      return;
+    }
+
+    const fetchStorageLocations = async () => {
+      setLoadingStorage(true);
+      try {
+        // Fetch storage locations from warehouses/{userId}/list/{warehouseId}/storage
+        const storageRef = collection(db, "warehouses", user.uid, "list", formData.warehouseId, "storage");
+        const storageSnapshot = await getDocs(storageRef);
+        const storageData = storageSnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }));
+        setStorageLocations(storageData);
+      } catch (err) {
+        console.error("Error fetching storage locations:", err);
+        setStorageLocations([]);
+      } finally {
+        setLoadingStorage(false);
+      }
+    };
+
+    fetchStorageLocations();
+  }, [user, formData.warehouseId, open]);
+
   useEffect(() => {
     if (product) {
       setFormData({
@@ -148,6 +188,8 @@ export function FinishedProductPopup({
         location: product.location || "",
         warehouseId: product.warehouseId || "",
         warehouseName: product.warehouseName || "",
+        storageLocationId: product.storageLocationId || "",
+        storageLocationName: product.storageLocationName || "",
         shelfLocation: product.shelfLocation || "",
       });
       setIsEditing(true);
@@ -175,8 +217,13 @@ export function FinishedProductPopup({
       location: "",
       warehouseId: "",
       warehouseName: "",
+      storageLocationId: "",
+      storageLocationName: "",
       shelfLocation: "",
     });
+    setStorageLocations([]);
+    setEditingWarehouse(false);
+    setCustomWarehouse({ name: "", location: "" });
   };
 
   const handleInputChange = (e) => {
@@ -193,6 +240,19 @@ export function FinishedProductPopup({
   };
 
   const handleWarehouseSelect = (warehouseId) => {
+    if (warehouseId === "custom") {
+      setEditingWarehouse(true);
+      setFormData(prev => ({
+        ...prev,
+        warehouseId: "",
+        warehouseName: "",
+        location: "",
+        storageLocationId: "",
+        storageLocationName: "",
+      }));
+      return;
+    }
+    
     const selectedWarehouse = warehouses.find(w => w.id === warehouseId);
     if (selectedWarehouse) {
       setFormData(prev => ({
@@ -200,6 +260,43 @@ export function FinishedProductPopup({
         warehouseId: selectedWarehouse.id,
         warehouseName: selectedWarehouse.name,
         location: selectedWarehouse.location || selectedWarehouse.address || "",
+        storageLocationId: "", // Reset storage location when warehouse changes
+        storageLocationName: "",
+      }));
+      setEditingWarehouse(false);
+    }
+  };
+
+  const handleCustomWarehouseChange = (e) => {
+    const { name, value } = e.target;
+    setCustomWarehouse(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleAddCustomWarehouse = () => {
+    if (!customWarehouse.name) {
+      toast.error("Please enter warehouse name");
+      return;
+    }
+    
+    setFormData(prev => ({
+      ...prev,
+      warehouseId: "custom",
+      warehouseName: customWarehouse.name,
+      location: customWarehouse.location,
+    }));
+    setEditingWarehouse(false);
+    setCustomWarehouse({ name: "", location: "" });
+    toast.success("Custom warehouse added");
+  };
+
+  const handleStorageLocationSelect = (storageId) => {
+    const selectedStorage = storageLocations.find(s => s.id === storageId);
+    if (selectedStorage) {
+      setFormData(prev => ({
+        ...prev,
+        storageLocationId: selectedStorage.id,
+        storageLocationName: selectedStorage.name,
+        shelfLocation: selectedStorage.shelfLocation || selectedStorage.location || "",
       }));
     }
   };
@@ -240,6 +337,8 @@ export function FinishedProductPopup({
       location: formData.location || "",
       warehouseId: formData.warehouseId || "",
       warehouseName: formData.warehouseName || "",
+      storageLocationId: formData.storageLocationId || "",
+      storageLocationName: formData.storageLocationName || "",
       shelfLocation: formData.shelfLocation || "",
     };
 
@@ -289,10 +388,12 @@ export function FinishedProductPopup({
           </DialogDescription>
         </DialogHeader>
 
-        {loadingLocations && (
+        {(loadingLocations || loadingStorage) && (
           <div className="flex items-center justify-center py-4">
             <IconLoader className="animate-spin h-5 w-5 text-muted-foreground" />
-            <span className="ml-2 text-sm text-muted-foreground">Loading warehouses...</span>
+            <span className="ml-2 text-sm text-muted-foreground">
+              {loadingLocations ? "Loading warehouses..." : "Loading storage locations..."}
+            </span>
           </div>
         )}
 
@@ -355,37 +456,134 @@ export function FinishedProductPopup({
             </div>
           </div>
 
-          {/* Warehouse & Location Information */}
+          {/* Warehouse & Storage Location Information */}
           <div className="space-y-3">
             <h3 className="text-xs sm:text-sm font-semibold text-foreground flex items-center gap-2 border-b pb-2">
               <IconBuildingWarehouse className="h-3 w-3 sm:h-4 sm:w-4" />
-              Warehouse & Location
+              Warehouse & Storage Location
             </h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+            <div className="grid grid-cols-1 gap-3 sm:gap-4">
               <div className="space-y-1 sm:space-y-2">
                 <Label className="text-xs sm:text-sm">Select Warehouse</Label>
-                <Select
-                  value={formData.warehouseId}
-                  onValueChange={handleWarehouseSelect}
-                >
-                  <SelectTrigger className="h-10 sm:h-11 bg-background/50">
-                    <SelectValue placeholder={warehouses.length === 0 ? "No warehouses available" : "Select warehouse"} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {warehouses.map((warehouse) => (
-                      <SelectItem key={warehouse.id} value={warehouse.id}>
-                        <div className="flex items-center gap-2">
-                          <IconBuildingWarehouse className="h-3 w-3" />
-                          <span>{warehouse.name}</span>
-                          {warehouse.location && (
-                            <span className="text-xs text-muted-foreground">({warehouse.location})</span>
-                          )}
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                {!editingWarehouse ? (
+                  <>
+                    <Select
+                      value={formData.warehouseId}
+                      onValueChange={handleWarehouseSelect}
+                    >
+                      <SelectTrigger className="h-10 sm:h-11 bg-background/50">
+                        <SelectValue placeholder={warehouses.length === 0 ? "No warehouses available" : "Select warehouse"} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {warehouses.map((warehouse) => (
+                          <SelectItem key={warehouse.id} value={warehouse.id}>
+                            <div className="flex items-center gap-2">
+                              <IconBuildingWarehouse className="h-3 w-3" />
+                              <span>{warehouse.name}</span>
+                              {warehouse.location && (
+                                <span className="text-xs text-muted-foreground">({warehouse.location})</span>
+                              )}
+                            </div>
+                          </SelectItem>
+                        ))}
+                        <SelectItem value="custom" className="text-primary">
+                          <div className="flex items-center gap-2">
+                            <IconPlus className="h-3 w-3" />
+                            <span>+ Add Custom Warehouse</span>
+                          </div>
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                    {formData.warehouseName && formData.warehouseId !== "custom" && (
+                      <div className="text-xs text-muted-foreground mt-1">
+                        Selected: {formData.warehouseName}
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <div className="space-y-2">
+                    <Input
+                      name="name"
+                      placeholder="Warehouse Name *"
+                      value={customWarehouse.name}
+                      onChange={handleCustomWarehouseChange}
+                      className="h-10 sm:h-11 bg-background/50"
+                    />
+                    <Input
+                      name="location"
+                      placeholder="Warehouse Location"
+                      value={customWarehouse.location}
+                      onChange={handleCustomWarehouseChange}
+                      className="h-10 sm:h-11 bg-background/50"
+                    />
+                    <div className="flex gap-2">
+                      <Button
+                        type="button"
+                        size="sm"
+                        onClick={handleAddCustomWarehouse}
+                        className="flex-1"
+                      >
+                        <IconPlus className="mr-1 h-3 w-3" />
+                        Add Warehouse
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setEditingWarehouse(false)}
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </div>
+
+              {formData.warehouseId && storageLocations.length > 0 && !editingWarehouse && (
+                <div className="space-y-1 sm:space-y-2">
+                  <Label className="text-xs sm:text-sm flex items-center gap-2">
+                    <IconLayoutGrid className="h-3 w-3" />
+                    Select Storage Location
+                  </Label>
+                  <Select
+                    value={formData.storageLocationId}
+                    onValueChange={handleStorageLocationSelect}
+                  >
+                    <SelectTrigger className="h-10 sm:h-11 bg-background/50">
+                      <SelectValue placeholder="Select storage location" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {storageLocations.map((storage) => (
+                        <SelectItem key={storage.id} value={storage.id}>
+                          <div className="flex flex-col">
+                            <div className="flex items-center gap-2">
+                              <IconLocation className="h-3 w-3" />
+                              <span className="font-medium">{storage.name}</span>
+                            </div>
+                            {storage.shelfLocation && (
+                              <span className="text-xs text-muted-foreground ml-5">
+                                Shelf: {storage.shelfLocation}
+                              </span>
+                            )}
+                            {storage.capacity && (
+                              <span className="text-xs text-muted-foreground ml-5">
+                                Capacity: {storage.capacity}
+                              </span>
+                            )}
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              {formData.warehouseId && storageLocations.length === 0 && !loadingStorage && !editingWarehouse && (
+                <div className="text-xs text-muted-foreground p-2 bg-muted/30 rounded-lg">
+                  No storage locations found. Please add storage locations to this warehouse first.
+                </div>
+              )}
+
               <div className="space-y-1 sm:space-y-2">
                 <Label className="text-xs sm:text-sm">Shelf / Rack Location</Label>
                 <Input
@@ -396,15 +594,15 @@ export function FinishedProductPopup({
                   className="h-10 sm:h-11 bg-background/50"
                 />
               </div>
-              <div className="space-y-1 sm:space-y-2 sm:col-span-2">
-                <Label className="text-xs sm:text-sm">Warehouse Address / Location</Label>
+
+              <div className="space-y-1 sm:space-y-2">
+                <Label className="text-xs sm:text-sm">Warehouse Address</Label>
                 <Input
                   name="location"
                   value={formData.location}
                   onChange={handleInputChange}
-                  placeholder="Auto-filled from warehouse selection"
+                  placeholder="Warehouse address"
                   className="h-10 sm:h-11 bg-background/50"
-                  readOnly
                 />
               </div>
             </div>
@@ -429,7 +627,7 @@ export function FinishedProductPopup({
                 />
               </div>
               <div className="space-y-1 sm:space-y-2">
-                <Label className="text-xs sm:text-sm">Cost Price (USD)</Label>
+                <Label className="text-xs sm:text-sm">Cost Price (Tsh)</Label>
                 <Input
                   name="costPrice"
                   type="number"
@@ -440,7 +638,7 @@ export function FinishedProductPopup({
                 />
               </div>
               <div className="space-y-1 sm:space-y-2">
-                <Label className="text-xs sm:text-sm">Selling Price (USD)</Label>
+                <Label className="text-xs sm:text-sm">Selling Price (Tsh)</Label>
                 <Input
                   name="sellingPrice"
                   type="number"
