@@ -10,7 +10,7 @@ import {
   IconTruck,
   IconChartBar,
   IconShieldCheck,
-  IconZap,
+  IconBolt,
   IconBell,
   IconCheck,
   IconArrowRight,
@@ -45,7 +45,7 @@ export default function LandingPage() {
       description: "Track defects and maintain product quality standards"
     },
     {
-      icon: IconZap,
+      icon: IconBolt,
       title: "Energy Monitoring",
       description: "Monitor and optimize energy consumption"
     },
