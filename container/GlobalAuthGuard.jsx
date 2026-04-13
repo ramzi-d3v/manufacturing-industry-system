@@ -10,7 +10,7 @@ export default function GlobalAuthGuard({ children }) {
   const pathname = usePathname();
 
   // Pages that should remain public
-  const publicPaths = ["/signin", "/signup", "/forgot-password", "/verification-pending"];
+  const publicPaths = ["/", "/signin", "/signup", "/forgot-password", "/verification-pending"];
 
   useLayoutEffect(() => {
     if (loading) return;

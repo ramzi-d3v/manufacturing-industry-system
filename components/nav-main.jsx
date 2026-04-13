@@ -67,14 +67,14 @@ export function NavMain() {
             <SidebarMenuButton
               asChild
               tooltip="Dashboard"
-              isActive={pathname === "/"}
+              isActive={pathname === "/dashboard" || pathname === "/home"}
               className="cursor-pointer hover:backdrop-blur-sm hover:bg-white/10 transition-all duration-200"
             >
-              <Link href="/">
+              <Link href="/dashboard">
                 <IconDashboard size={18} stroke={1.5} />
                 <span className={cn(
                   "font-medium",
-                  pathname === "/" ? "text-purple-400" : ""
+                  (pathname === "/dashboard" || pathname === "/home") ? "text-purple-400" : ""
                 )}>
                   Dashboard
                 </span>

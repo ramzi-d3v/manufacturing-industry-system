@@ -1,380 +1,93 @@
 "use client"
 
-import { useState } from "react"
-import Link from "next/link"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { useState, useEffect } from "react"
+import { AppSidebar } from "@/components/app-sidebar"
+import { SiteHeader } from "@/components/site-header"
+import {
+  SidebarInset,
+  SidebarProvider,
+} from "@/components/ui/sidebar"
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import {
   IconBuildingWarehouse,
   IconTruck,
-  IconChartBar,
-  IconShieldCheck,
-  IconZap,
+  IconBuildingStore,
+  IconUsers,
   IconBell,
-  IconCheck,
-  IconArrowRight,
-  IconMenu2,
-  IconX,
+  IconSparkles,
+  IconClock,
+  IconMessage,
+  IconHelp,
+  IconMapPin,
+  IconPhone,
+  IconMail,
+  IconLoader,
+  IconSpeakerphone,
+  IconListCheck,
+  IconUserCheck,
+  IconCalendarEvent,
+  IconClipboardList,
+  IconCalendar,
+  IconChartBar,
+  IconHeadset,
+  IconLivePhoto,
+  IconMailForward,
 } from "@tabler/icons-react"
 import { cn } from "@/lib/utils"
-import { ThemeToggle } from "@/components/theme-toggle"
+import { JetBrains_Mono } from "next/font/google"
+import { auth, db } from "@/lib/firebase"
+import { useAuthState } from "react-firebase-hooks/auth"
+import { AnnouncementsTodosSider } from "@/components/dashboard/AnnouncementsTodosSider"
+import {
+  collection,
+  query,
+  onSnapshot,
+  orderBy,
+  where,
+  limit,
+  Timestamp,
+} from "firebase/firestore"
 
-export default function LandingPage() {
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+const jetBrainsMono = JetBrains_Mono({
+  subsets: ["latin"],
+  weight: ["400", "700"],
+})
 
-  const features = [
-    {
-      icon: IconBuildingWarehouse,
-      title: "Warehouse Management",
-      description: "Track and manage raw materials and finished goods inventory efficiently"
-    },
-    {
-      icon: IconTruck,
-      title: "Supply Chain",
-      description: "Monitor suppliers and distributors in real-time"
-    },
-    {
-      icon: IconChartBar,
-      title: "Analytics & Reporting",
-      description: "Get detailed insights into production and inventory metrics"
-    },
-    {
-      icon: IconShieldCheck,
-      title: "Quality Control",
-      description: "Track defects and maintain product quality standards"
-    },
-    {
-      icon: IconZap,
-      title: "Energy Monitoring",
-      description: "Monitor and optimize energy consumption"
-    },
-    {
-      icon: IconBell,
-      title: "Real-time Notifications",
-      description: "Get instant alerts for important events and updates"
-    },
-  ]
+// Format relative time helper
+const formatRelativeTime = (timestamp) => {
+  if (!timestamp) return "Just now"
 
-  const pricingPlans = [
-    {
-      name: "Starter",
-      description: "Perfect for small operations",
-      price: "$29",
-      period: "/month",
-      features: [
-        "Up to 5 warehouses",
-        "Basic inventory tracking",
-        "Email notifications",
-        "Basic analytics",
-        "Community support"
-      ],
-      highlighted: false
-    },
-    {
-      name: "Professional",
-      description: "For growing businesses",
-      price: "$79",
-      period: "/month",
-      features: [
-        "Unlimited warehouses",
-        "Advanced inventory management",
-        "Real-time notifications",
-        "Advanced analytics & reports",
-        "Quality control module",
-        "Priority email support",
-        "API access"
-      ],
-      highlighted: true
-    },
-    {
-      name: "Enterprise",
-      description: "For large organizations",
-      price: "Custom",
-      period: "pricing",
-      features: [
-        "Everything in Professional",
-        "Unlimited users",
-        "Custom integrations",
-        "Dedicated account manager",
-        "24/7 phone support",
-        "On-premise deployment",
-        "SLA guarantee"
-      ],
-      highlighted: false
-    },
-  ]
+  const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp)
+  const now = new Date()
+  const diffMs = now - date
+  const diffSec = Math.floor(diffMs / 1000)
+  const diffMin = Math.floor(diffSec / 60)
+  const diffHour = Math.floor(diffMin / 60)
+  const diffDay = Math.floor(diffHour / 24)
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-purple-500/5">
-      {/* Navigation */}
-      <nav className="fixed top-0 z-40 w-full border-b border-border/40 bg-background/80 backdrop-blur-xl">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <Link href="/" className="flex items-center gap-2">
-              <div className="h-8 w-8 rounded-lg bg-purple-500/20 flex items-center justify-center">
-                <span className="text-purple-500 font-bold text-lg">M</span>
-              </div>
-              <span className="font-bold text-lg hidden sm:inline">ManufactureHub</span>
-            </Link>
+  if (diffSec < 60) return "Just now"
+  if (diffMin < 60) return `${diffMin}m ago`
+  if (diffHour < 24) return `${diffHour}h ago`
+  if (diffDay < 7) return `${diffDay}d ago`
+  return date.toLocaleDateString()
+}
 
-            {/* Desktop Menu */}
-            <div className="hidden md:flex items-center gap-8">
-              <Link href="#features" className="text-sm text-muted-foreground hover:text-foreground transition">
-                Features
-              </Link>
-              <Link href="#pricing" className="text-sm text-muted-foreground hover:text-foreground transition">
-                Pricing
-              </Link>
-              <Link href="#contact" className="text-sm text-muted-foreground hover:text-foreground transition">
-                Contact
-              </Link>
-            </div>
-
-            {/* Right side */}
-            <div className="flex items-center gap-4">
-              <ThemeToggle />
-              
-              {/* Mobile menu button */}
-              <button
-                className="md:hidden"
-                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              >
-                {mobileMenuOpen ? (
-                  <IconX className="h-6 w-6" />
-                ) : (
-                  <IconMenu2 className="h-6 w-6" />
-                )}
-              </button>
-
-              {/* Auth buttons */}
-              <Link href="/signin">
-                <Button variant="ghost" size="sm" className="hidden sm:inline-flex">
-                  Sign In
-                </Button>
-              </Link>
-              <Link href="/signup">
-                <Button size="sm" className="hidden sm:inline-flex bg-purple-600 hover:bg-purple-700">
-                  Get Started
-                </Button>
-              </Link>
-            </div>
-          </div>
-
-          {/* Mobile Menu */}
-          {mobileMenuOpen && (
-            <div className="md:hidden pb-4 space-y-4">
-              <Link href="#features" className="block text-sm text-muted-foreground hover:text-foreground py-2">
-                Features
-              </Link>
-              <Link href="#pricing" className="block text-sm text-muted-foreground hover:text-foreground py-2">
-                Pricing
-              </Link>
-              <Link href="#contact" className="block text-sm text-muted-foreground hover:text-foreground py-2">
-                Contact
-              </Link>
-              <div className="flex gap-2 pt-4">
-                <Link href="/signin" className="flex-1">
-                  <Button variant="outline" size="sm" className="w-full">
-                    Sign In
-                  </Button>
-                </Link>
-                <Link href="/signup" className="flex-1">
-                  <Button size="sm" className="w-full bg-purple-600 hover:bg-purple-700">
-                    Get Started
-                  </Button>
-                </Link>
-              </div>
-            </div>
-          )}
-        </div>
-      </nav>
-
-      {/* Hero Section */}
-      <section className="relative pt-32 pb-20 px-4 sm:px-6 lg:px-8">
-        <div className="mx-auto max-w-4xl text-center">
-          <Badge variant="outline" className="mb-4">Revolutionize Your Manufacturing 🚀</Badge>
-          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight mb-6">
-            Complete Manufacturing <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-cyan-400">Industry System</span>
-          </h1>
-          <p className="text-lg text-muted-foreground mb-8 max-w-2xl mx-auto leading-relaxed">
-            Streamline your entire manufacturing operation with our comprehensive platform. 
-            From raw materials to finished products, manage everything in one place with real-time 
-            insights and intelligent automation.
-          </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link href="/signup">
-              <Button size="lg" className="bg-purple-600 hover:bg-purple-700 gap-2">
-                Start Free Trial <IconArrowRight className="h-4 w-4" />
-              </Button>
-            </Link>
-            <Button size="lg" variant="outline">
-              Watch Demo
-            </Button>
-          </div>
-        </div>
-
-        {/* Decorative elements */}
-        <div className="absolute -top-40 -right-40 h-80 w-80 bg-purple-600/10 rounded-full blur-3xl -z-10" />
-        <div className="absolute -bottom-40 -left-40 h-80 w-80 bg-cyan-600/10 rounded-full blur-3xl -z-10" />
-      </section>
-
-      {/* Features Section */}
-      <section id="features" className="py-20 px-4 sm:px-6 lg:px-8">
-        <div className="mx-auto max-w-7xl">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl sm:text-4xl font-bold mb-4">Powerful Features</h2>
-            <p className="text-muted-foreground text-lg">Everything you need to manage your manufacturing operations</p>
-          </div>
-
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {features.map((feature, idx) => {
-              const Icon = feature.icon
-              return (
-                <Card key={idx} className="border-border/50 hover:border-purple-500/50 transition-colors">
-                  <CardHeader>
-                    <div className="h-12 w-12 rounded-lg bg-purple-500/10 flex items-center justify-center mb-4">
-                      <Icon className="h-6 w-6 text-purple-500" />
-                    </div>
-                    <CardTitle>{feature.title}</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-muted-foreground">{feature.description}</p>
-                  </CardContent>
-                </Card>
-              )
-            })}
-          </div>
-        </div>
-      </section>
-
-      {/* Pricing Section */}
-      <section id="pricing" className="py-20 px-4 sm:px-6 lg:px-8 bg-muted/30">
-        <div className="mx-auto max-w-7xl">
-          <div className="text-center mb-16">
-            <Badge variant="outline" className="mb-4">Transparent Pricing</Badge>
-            <h2 className="text-3xl sm:text-4xl font-bold mb-4">Simple, Flexible Plans</h2>
-            <p className="text-muted-foreground text-lg">Choose the perfect plan for your business needs</p>
-          </div>
-
-          <div className="grid md:grid-cols-3 gap-8">
-            {pricingPlans.map((plan, idx) => (
-              <Card 
-                key={idx} 
-                className={cn(
-                  "border-border/50 transition-all",
-                  plan.highlighted && "border-purple-500/50 ring-1 ring-purple-500/20 lg:scale-105"
-                )}
-              >
-                <CardHeader>
-                  <div className="flex items-start justify-between mb-4">
-                    <div>
-                      <CardTitle>{plan.name}</CardTitle>
-                      <CardDescription className="mt-2">{plan.description}</CardDescription>
-                    </div>
-                    {plan.highlighted && <Badge className="bg-purple-600">Popular</Badge>}
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="mb-6">
-                    <span className="text-4xl font-bold">{plan.price}</span>
-                    <span className="text-muted-foreground ml-2 text-sm">{plan.period}</span>
-                  </div>
-
-                  <Button 
-                    className={cn(
-                      "w-full mb-8",
-                      plan.highlighted && "bg-purple-600 hover:bg-purple-700"
-                    )}
-                    variant={plan.highlighted ? "default" : "outline"}
-                  >
-                    Get Started
-                  </Button>
-
-                  <div className="space-y-3">
-                    {plan.features.map((feature, featureIdx) => (
-                      <div key={featureIdx} className="flex gap-3">
-                        <IconCheck className="h-5 w-5 text-green-500 flex-shrink-0 mt-0.5" />
-                        <span className="text-sm text-muted-foreground">{feature}</span>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* CTA Section */}
-      <section className="py-20 px-4 sm:px-6 lg:px-8">
-        <div className="mx-auto max-w-4xl text-center">
-          <h2 className="text-3xl sm:text-4xl font-bold mb-4">Ready to Transform Your Manufacturing?</h2>
-          <p className="text-lg text-muted-foreground mb-8">
-            Join thousands of manufacturers already using ManufactureHub to optimize their operations.
-          </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link href="/signup">
-              <Button size="lg" className="bg-purple-600 hover:bg-purple-700">
-                Start Your Free Trial
-              </Button>
-            </Link>
-            <Link href="/signin">
-              <Button size="lg" variant="outline">
-                Already have an account? Sign In
-              </Button>
-            </Link>
-          </div>
-        </div>
-      </section>
-
-      {/* Footer */}
-      <footer id="contact" className="border-t border-border/40 bg-muted/30 py-12 px-4 sm:px-6 lg:px-8">
-        <div className="mx-auto max-w-7xl">
-          <div className="grid md:grid-cols-4 gap-8 mb-8">
-            <div>
-              <div className="flex items-center gap-2 mb-4">
-                <div className="h-8 w-8 rounded-lg bg-purple-500/20 flex items-center justify-center">
-                  <span className="text-purple-500 font-bold">M</span>
-                </div>
-                <span className="font-bold">ManufactureHub</span>
-              </div>
-              <p className="text-sm text-muted-foreground">
-                Complete manufacturing management solution
-              </p>
-            </div>
-            <div>
-              <h4 className="font-semibold mb-4">Product</h4>
-              <ul className="space-y-2 text-sm text-muted-foreground">
-                <li><Link href="#features" className="hover:text-foreground transition">Features</Link></li>
-                <li><Link href="#pricing" className="hover:text-foreground transition">Pricing</Link></li>
-                <li><Link href="#" className="hover:text-foreground transition">Documentation</Link></li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="font-semibold mb-4">Company</h4>
-              <ul className="space-y-2 text-sm text-muted-foreground">
-                <li><Link href="#" className="hover:text-foreground transition">About</Link></li>
-                <li><Link href="#" className="hover:text-foreground transition">Blog</Link></li>
-                <li><Link href="#" className="hover:text-foreground transition">Careers</Link></li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="font-semibold mb-4">Legal</h4>
-              <ul className="space-y-2 text-sm text-muted-foreground">
-                <li><Link href="#" className="hover:text-foreground transition">Privacy</Link></li>
-                <li><Link href="#" className="hover:text-foreground transition">Terms</Link></li>
-                <li><Link href="#" className="hover:text-foreground transition">Security</Link></li>
-              </ul>
-            </div>
-          </div>
-          <div className="border-t border-border/40 pt-8 text-center text-sm text-muted-foreground">
-            <p>&copy; 2026 ManufactureHub. All rights reserved.</p>
-          </div>
-        </div>
-      </footer>
-    </div>
-  )
+export default function DashboardPage() {
+  const [user, loadingAuth] = useAuthState(auth)
+  const [warehouses, setWarehouses] = useState([])
+  const [suppliers, setSuppliers] = useState([])
+  const [distributors, setDistributors] = useState([])
+  const [loadingData, setLoadingData] = useState(true)
+  const [activities, setActivities] = useState([])
 
   // Fetch real data from Firestore
   useEffect(() => {

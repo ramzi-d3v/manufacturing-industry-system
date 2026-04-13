@@ -185,7 +185,7 @@ export default function NotFoundPage() {
           </p>
           <p className="text-sm text-muted-foreground">
             Check out our <Link href="/settings" className="text-purple-400 hover:text-purple-300 underline">settings</Link> or contact support at{" "}
-            <a href="mailto:support@example.com" className="text-purple-400 hover:text-purple-300 underline">support@example.com</a>
+            <a href="ramzi@prodesign.co.tz" className="text-purple-400 hover:text-purple-300 underline">support@example.com</a>
           </p>
         </div>
       </div>

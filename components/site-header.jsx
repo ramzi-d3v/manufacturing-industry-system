@@ -299,7 +299,7 @@ export function SiteHeader() {
   };
 
   const currentPage = getCurrentPageName();
-  const isHome = pathname === "/" || pathname === "/dashboard";
+  const isHome = pathname === "/dashboard" || pathname === "/home";
 
   // Get notification icon component
   const getNotificationIcon = (type) => {
