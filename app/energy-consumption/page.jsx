@@ -89,6 +89,8 @@ import {
 } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
+import { useContext } from "react";
+import { AuthContext } from "@/context/AuthContext";
 
 // Energy type configuration
 const energyTypeConfig = {
@@ -1011,4 +1013,64 @@ export function EnergyConsumptionTable({
       />
     </>
   );
+}
+
+// Main Page Component
+export default function EnergyConsumptionPage() {
+  const [energyData, setEnergyData] = React.useState([]);
+  const [isLoading, setIsLoading] = React.useState(true);
+  const { user } = useContext(AuthContext);
+
+  React.useEffect(() => {
+    if (!user?.uid) return;
+
+    const loadEnergyData = async () => {
+      try {
+        setIsLoading(true);
+        // Placeholder: Replace with actual Firestore data loading
+        setEnergyData([]);
+      } catch (error) {
+        console.error("Error loading energy data:", error);
+        toast.error("Failed to load energy consumption data");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadEnergyData();
+  }, [user]);
+
+  const handleUpdate = (id, updatedData) => {
+    setEnergyData((prev) =>
+      prev.map((item) => (item.id === id ? { ...item, ...updatedData } : item))
+    );
+    toast.success("Energy record updated successfully");
+  };
+
+  const handleDelete = (id) => {
+    setEnergyData((prev) => prev.filter((item) => item.id !== id));
+    toast.success("Energy record deleted successfully");
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="text-center">
+          <IconBolt className="h-12 w-12 text-yellow-500 mx-auto mb-4 animate-spin" />
+          <p className="text-muted-foreground">Loading energy data...</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="w-full">
+      <EnergyConsumptionTable
+        data={energyData}
+        onUpdate={handleUpdate}
+        onDelete={handleDelete}
+      />
+    </div>
+  );
+}
 }
