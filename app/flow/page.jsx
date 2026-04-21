@@ -48,6 +48,8 @@ import {
   IconChartPie,
   IconCategory,
   IconMinus,
+  IconChevronLeft,
+  IconChevronRight,
 } from "@tabler/icons-react";
 import { toast } from "sonner";
 import { auth, db } from "@/lib/firebase";
@@ -115,6 +117,14 @@ export default function LogisticsFlowPage() {
   const [loadingData, setLoadingData] = useState(true);
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState("raw-materials");
+  
+  // Pagination states for Raw Materials
+  const [materialCurrentPage, setMaterialCurrentPage] = useState(1);
+  const [materialItemsPerPage] = useState(10);
+  
+  // Pagination states for Finished Products
+  const [productCurrentPage, setProductCurrentPage] = useState(1);
+  const [productItemsPerPage] = useState(10);
   
   // Filter states for Raw Materials
   const [materialSearch, setMaterialSearch] = useState("");
@@ -218,6 +228,7 @@ export default function LogisticsFlowPage() {
     }
 
     setFilteredMaterials(filtered);
+    setMaterialCurrentPage(1); // Reset to first page when filters change
   }, [rawMaterials, materialSearch, materialCategory, materialStockFilter]);
 
   // Filter finished products
@@ -245,6 +256,7 @@ export default function LogisticsFlowPage() {
     }
 
     setFilteredProducts(filtered);
+    setProductCurrentPage(1); // Reset to first page when filters change
   }, [finishedProducts, productSearch, productCategory, productStockFilter]);
 
   // Calculate stats
@@ -296,6 +308,21 @@ export default function LogisticsFlowPage() {
     if (quantity <= threshold) return { label: "Low Stock", color: "text-yellow-500", bg: "bg-yellow-500/10", icon: IconClock };
     return { label: "In Stock", color: "text-green-500", bg: "bg-green-500/10", icon: IconCheck };
   };
+
+  // Pagination helper
+  const paginateData = (data, currentPage, itemsPerPage) => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    return data.slice(startIndex, endIndex);
+  };
+
+  // Get current page data
+  const currentMaterials = paginateData(filteredMaterials, materialCurrentPage, materialItemsPerPage);
+  const currentProducts = paginateData(filteredProducts, productCurrentPage, productItemsPerPage);
+  
+  // Calculate total pages
+  const materialTotalPages = Math.ceil(filteredMaterials.length / materialItemsPerPage);
+  const productTotalPages = Math.ceil(filteredProducts.length / productItemsPerPage);
 
   // Loading states
   if (loadingAuth || loadingData) {
@@ -392,7 +419,7 @@ export default function LogisticsFlowPage() {
             </div>
           </div>
 
-          {/* Enhanced Summary Header - Similar to Product Analytics */}
+          {/* Enhanced Summary Header */}
           <div className="rounded-lg border border-border/50 overflow-hidden bg-background/40 backdrop-blur-sm">
             <div className="p-4 border-b border-border/50 bg-background/30">
               {/* Main Metrics Row */}
@@ -401,12 +428,12 @@ export default function LogisticsFlowPage() {
                 <div className="flex flex-col p-2 bg-background/20 rounded-lg">
                   <div className="flex items-center gap-1 text-muted-foreground mb-1">
                     <IconPackage className="h-3.5 w-3.5" />
-                    <p className="text-[10px] font-medium uppercase tracking-wider">Raw Materials</p>
+                    <p className="text-xs font-medium uppercase tracking-wider">Raw Materials</p>
                   </div>
                   <div className="flex items-baseline gap-2">
                     <p className="text-2xl font-bold">{formatNumber(stats.totalRawMaterials)}</p>
                   </div>
-                  <p className="text-[9px] text-muted-foreground mt-1">
+                  <p className="text-xs text-muted-foreground mt-1">
                     Value: {formatCurrency(stats.totalRawValue)}
                   </p>
                 </div>
@@ -415,12 +442,12 @@ export default function LogisticsFlowPage() {
                 <div className="flex flex-col p-2 bg-background/20 rounded-lg">
                   <div className="flex items-center gap-1 text-muted-foreground mb-1">
                     <IconBox className="h-3.5 w-3.5" />
-                    <p className="text-[10px] font-medium uppercase tracking-wider">Finished Goods</p>
+                    <p className="text-xs font-medium uppercase tracking-wider">Finished Goods</p>
                   </div>
                   <div className="flex items-baseline gap-2">
                     <p className="text-2xl font-bold">{formatNumber(stats.totalFinishedProducts)}</p>
                   </div>
-                  <p className="text-[9px] text-muted-foreground mt-1">
+                  <p className="text-xs text-muted-foreground mt-1">
                     Value: {formatCurrency(stats.totalProductValue)}
                   </p>
                 </div>
@@ -429,14 +456,14 @@ export default function LogisticsFlowPage() {
                 <div className="flex flex-col p-2 bg-background/20 rounded-lg">
                   <div className="flex items-center gap-1 text-muted-foreground mb-1">
                     <IconCurrencyDollar className="h-3.5 w-3.5" />
-                    <p className="text-[10px] font-medium uppercase tracking-wider">Total Value</p>
+                    <p className="text-xs font-medium uppercase tracking-wider">Total Value</p>
                   </div>
                   <div className="flex items-baseline gap-2">
                     <p className="text-2xl font-bold text-green-600">
                       {formatCurrency(stats.totalRawValue + stats.totalProductValue)}
                     </p>
                   </div>
-                  <p className="text-[9px] text-muted-foreground mt-1">
+                  <p className="text-xs text-muted-foreground mt-1">
                     Raw + Finished goods
                   </p>
                 </div>
@@ -445,12 +472,12 @@ export default function LogisticsFlowPage() {
                 <div className="flex flex-col p-2 bg-background/20 rounded-lg">
                   <div className="flex items-center gap-1 text-muted-foreground mb-1">
                     <IconBuildingWarehouse className="h-3.5 w-3.5" />
-                    <p className="text-[10px] font-medium uppercase tracking-wider">Locations</p>
+                    <p className="text-xs font-medium uppercase tracking-wider">Locations</p>
                   </div>
                   <div className="flex items-baseline gap-2">
                     <p className="text-2xl font-bold">{formatNumber(stats.totalLocations)}</p>
                   </div>
-                  <p className="text-[9px] text-muted-foreground mt-1">
+                  <p className="text-xs text-muted-foreground mt-1">
                     Active storage locations
                   </p>
                 </div>
@@ -459,12 +486,12 @@ export default function LogisticsFlowPage() {
                 <div className="flex flex-col p-2 bg-background/20 rounded-lg">
                   <div className="flex items-center gap-1 text-muted-foreground mb-1">
                     <IconChartBar className="h-3.5 w-3.5" />
-                    <p className="text-[10px] font-medium uppercase tracking-wider">Total Items</p>
+                    <p className="text-xs font-medium uppercase tracking-wider">Total Items</p>
                   </div>
                   <div className="flex items-baseline gap-2">
                     <p className="text-2xl font-bold">{formatNumber(stats.totalRawMaterials + stats.totalFinishedProducts)}</p>
                   </div>
-                  <p className="text-[9px] text-muted-foreground mt-1">
+                  <p className="text-xs text-muted-foreground mt-1">
                     Batches tracked
                   </p>
                 </div>
@@ -475,20 +502,20 @@ export default function LogisticsFlowPage() {
                 {/* Raw Materials Stock Health */}
                 <div className="flex flex-col gap-1.5">
                   <div className="flex items-center gap-1.5">
-                    <IconChartPie className="h-3 w-3 text-muted-foreground" />
-                    <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Raw Materials Stock Health</p>
+                    <IconChartPie className="h-4 w-4 text-muted-foreground" />
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Raw Materials Stock Health</p>
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    <Badge className="bg-green-500/10 text-green-600 text-[10px] px-2 py-0.5 gap-1">
-                      <IconCheck className="h-2.5 w-2.5" />
+                    <Badge className="bg-green-500/10 text-green-600 text-xs px-2 py-1 gap-1">
+                      <IconCheck className="h-3 w-3" />
                       In Stock: {materialStockHealth.inStock}
                     </Badge>
-                    <Badge className="bg-yellow-500/10 text-yellow-600 text-[10px] px-2 py-0.5 gap-1">
-                      <IconClock className="h-2.5 w-2.5" />
+                    <Badge className="bg-yellow-500/10 text-yellow-600 text-xs px-2 py-1 gap-1">
+                      <IconClock className="h-3 w-3" />
                       Low Stock: {materialStockHealth.lowStock}
                     </Badge>
-                    <Badge className="bg-red-500/10 text-red-600 text-[10px] px-2 py-0.5 gap-1">
-                      <IconX className="h-2.5 w-2.5" />
+                    <Badge className="bg-red-500/10 text-red-600 text-xs px-2 py-1 gap-1">
+                      <IconX className="h-3 w-3" />
                       Out of Stock: {materialStockHealth.outOfStock}
                     </Badge>
                   </div>
@@ -497,20 +524,20 @@ export default function LogisticsFlowPage() {
                 {/* Finished Products Stock Health */}
                 <div className="flex flex-col gap-1.5">
                   <div className="flex items-center gap-1.5">
-                    <IconChartPie className="h-3 w-3 text-muted-foreground" />
-                    <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Finished Goods Stock Health</p>
+                    <IconChartPie className="h-4 w-4 text-muted-foreground" />
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Finished Goods Stock Health</p>
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    <Badge className="bg-green-500/10 text-green-600 text-[10px] px-2 py-0.5 gap-1">
-                      <IconCheck className="h-2.5 w-2.5" />
+                    <Badge className="bg-green-500/10 text-green-600 text-xs px-2 py-1 gap-1">
+                      <IconCheck className="h-3 w-3" />
                       In Stock: {productStockHealth.inStock}
                     </Badge>
-                    <Badge className="bg-yellow-500/10 text-yellow-600 text-[10px] px-2 py-0.5 gap-1">
-                      <IconClock className="h-2.5 w-2.5" />
+                    <Badge className="bg-yellow-500/10 text-yellow-600 text-xs px-2 py-1 gap-1">
+                      <IconClock className="h-3 w-3" />
                       Low Stock: {productStockHealth.lowStock}
                     </Badge>
-                    <Badge className="bg-red-500/10 text-red-600 text-[10px] px-2 py-0.5 gap-1">
-                      <IconX className="h-2.5 w-2.5" />
+                    <Badge className="bg-red-500/10 text-red-600 text-xs px-2 py-1 gap-1">
+                      <IconX className="h-3 w-3" />
                       Out of Stock: {productStockHealth.outOfStock}
                     </Badge>
                   </div>
@@ -519,7 +546,7 @@ export default function LogisticsFlowPage() {
 
               {/* Flow Visualization Mini */}
               <div className="mt-3 pt-2 border-t border-border/30">
-                <div className="flex items-center justify-between text-[9px] text-muted-foreground mb-1">
+                <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
                   <span>Production Pipeline</span>
                   <span>{stats.totalRawMaterials} raw → {stats.totalFinishedProducts} finished</span>
                 </div>
@@ -533,7 +560,7 @@ export default function LogisticsFlowPage() {
 
               {/* Last updated timestamp */}
               <div className="flex justify-end mt-2 pt-1 border-t border-border/30">
-                <div className="text-[9px] text-muted-foreground">
+                <div className="text-xs text-muted-foreground">
                   Last updated: {new Date().toLocaleDateString()} at {new Date().toLocaleTimeString()}
                 </div>
               </div>
@@ -555,7 +582,7 @@ export default function LogisticsFlowPage() {
                 <div className="flex items-center gap-2">
                   <IconPackage className="h-4 w-4" />
                   Raw Materials Inventory
-                  <Badge variant="secondary" className="ml-1 text-[10px] px-1">
+                  <Badge variant="secondary" className="ml-1 text-xs px-1">
                     {filteredMaterials.length}
                   </Badge>
                 </div>
@@ -575,7 +602,7 @@ export default function LogisticsFlowPage() {
                 <div className="flex items-center gap-2">
                   <IconBox className="h-4 w-4" />
                   Finished Goods Inventory
-                  <Badge variant="secondary" className="ml-1 text-[10px] px-1">
+                  <Badge variant="secondary" className="ml-1 text-xs px-1">
                     {filteredProducts.length}
                   </Badge>
                 </div>
@@ -592,7 +619,7 @@ export default function LogisticsFlowPage() {
               {/* Raw Materials Filters */}
               <div className="flex flex-col sm:flex-row gap-3">
                 <div className="flex-1 relative">
-                  <IconSearch className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground z-10" />
+                  <IconSearch className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
                     placeholder="Search by name, batch, supplier..."
                     value={materialSearch}
@@ -649,11 +676,11 @@ export default function LogisticsFlowPage() {
                           <th className="text-right py-3 px-4 font-medium text-xs">Quantity</th>
                           <th className="text-right py-3 px-4 font-medium text-xs">Unit</th>
                           <th className="text-right py-3 px-4 font-medium text-xs">Status</th>
-                        </tr>
+                         </tr>
                       </thead>
                       <tbody>
-                        {filteredMaterials.length > 0 ? (
-                          filteredMaterials.map((material) => {
+                        {currentMaterials.length > 0 ? (
+                          currentMaterials.map((material) => {
                             const stockStatus = getStockStatus(material.quantity, material.reorderLevel, false);
                             const StatusIcon = stockStatus.icon;
                             return (
@@ -675,7 +702,7 @@ export default function LogisticsFlowPage() {
                                 <td className="py-3 px-4 text-right font-medium">{material.quantity || 0}</td>
                                 <td className="py-3 px-4 text-right text-xs text-muted-foreground">{material.unit || "pcs"}</td>
                                 <td className="py-3 px-4 text-right">
-                                  <Badge className={cn("text-[10px] gap-1", stockStatus.bg, stockStatus.color)}>
+                                  <Badge className={cn("text-xs gap-1", stockStatus.bg, stockStatus.color)}>
                                     <StatusIcon className="h-3 w-3" />
                                     {stockStatus.label}
                                   </Badge>
@@ -693,6 +720,60 @@ export default function LogisticsFlowPage() {
                       </tbody>
                     </table>
                   </div>
+                  
+                  {/* Pagination for Raw Materials */}
+                  {filteredMaterials.length > 0 && (
+                    <div className="flex items-center justify-between px-4 py-3 border-t border-border/50">
+                      <div className="text-xs text-muted-foreground">
+                        Showing {((materialCurrentPage - 1) * materialItemsPerPage) + 1} to {Math.min(materialCurrentPage * materialItemsPerPage, filteredMaterials.length)} of {filteredMaterials.length} materials
+                      </div>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setMaterialCurrentPage(prev => Math.max(prev - 1, 1))}
+                          disabled={materialCurrentPage === 1}
+                          className="h-8 w-8 p-0"
+                        >
+                          <IconChevronLeft className="h-4 w-4" />
+                        </Button>
+                        <div className="flex items-center gap-1">
+                          {Array.from({ length: Math.min(5, materialTotalPages) }, (_, i) => {
+                            let pageNum;
+                            if (materialTotalPages <= 5) {
+                              pageNum = i + 1;
+                            } else if (materialCurrentPage <= 3) {
+                              pageNum = i + 1;
+                            } else if (materialCurrentPage >= materialTotalPages - 2) {
+                              pageNum = materialTotalPages - 4 + i;
+                            } else {
+                              pageNum = materialCurrentPage - 2 + i;
+                            }
+                            return (
+                              <Button
+                                key={pageNum}
+                                variant={materialCurrentPage === pageNum ? "default" : "outline"}
+                                size="sm"
+                                onClick={() => setMaterialCurrentPage(pageNum)}
+                                className="h-8 w-8 p-0 text-xs"
+                              >
+                                {pageNum}
+                              </Button>
+                            );
+                          })}
+                        </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setMaterialCurrentPage(prev => Math.min(prev + 1, materialTotalPages))}
+                          disabled={materialCurrentPage === materialTotalPages}
+                          className="h-8 w-8 p-0"
+                        >
+                          <IconChevronRight className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </div>
@@ -704,7 +785,7 @@ export default function LogisticsFlowPage() {
               {/* Finished Products Filters */}
               <div className="flex flex-col sm:flex-row gap-3">
                 <div className="flex-1 relative">
-                  <IconSearch className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground z-10" />
+                  <IconSearch className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
                     placeholder="Search by name, batch..."
                     value={productSearch}
@@ -765,8 +846,8 @@ export default function LogisticsFlowPage() {
                         </tr>
                       </thead>
                       <tbody>
-                        {filteredProducts.length > 0 ? (
-                          filteredProducts.map((product) => {
+                        {currentProducts.length > 0 ? (
+                          currentProducts.map((product) => {
                             const stockStatus = getStockStatus(product.quantity, 10, true);
                             const StatusIcon = stockStatus.icon;
                             const totalValue = (product.sellingPrice || 0) * (product.quantity || 0);
@@ -789,7 +870,7 @@ export default function LogisticsFlowPage() {
                                 <td className="py-3 px-4 text-right font-medium">{product.quantity || 0}</td>
                                 <td className="py-3 px-4 text-right text-xs text-muted-foreground">{product.unit || "pcs"}</td>
                                 <td className="py-3 px-4 text-right">
-                                  <Badge className={cn("text-[10px] gap-1", stockStatus.bg, stockStatus.color)}>
+                                  <Badge className={cn("text-xs gap-1", stockStatus.bg, stockStatus.color)}>
                                     <StatusIcon className="h-3 w-3" />
                                     {stockStatus.label}
                                   </Badge>
@@ -810,6 +891,60 @@ export default function LogisticsFlowPage() {
                       </tbody>
                     </table>
                   </div>
+                  
+                  {/* Pagination for Finished Products */}
+                  {filteredProducts.length > 0 && (
+                    <div className="flex items-center justify-between px-4 py-3 border-t border-border/50">
+                      <div className="text-xs text-muted-foreground">
+                        Showing {((productCurrentPage - 1) * productItemsPerPage) + 1} to {Math.min(productCurrentPage * productItemsPerPage, filteredProducts.length)} of {filteredProducts.length} products
+                      </div>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setProductCurrentPage(prev => Math.max(prev - 1, 1))}
+                          disabled={productCurrentPage === 1}
+                          className="h-8 w-8 p-0"
+                        >
+                          <IconChevronLeft className="h-4 w-4" />
+                        </Button>
+                        <div className="flex items-center gap-1">
+                          {Array.from({ length: Math.min(5, productTotalPages) }, (_, i) => {
+                            let pageNum;
+                            if (productTotalPages <= 5) {
+                              pageNum = i + 1;
+                            } else if (productCurrentPage <= 3) {
+                              pageNum = i + 1;
+                            } else if (productCurrentPage >= productTotalPages - 2) {
+                              pageNum = productTotalPages - 4 + i;
+                            } else {
+                              pageNum = productCurrentPage - 2 + i;
+                            }
+                            return (
+                              <Button
+                                key={pageNum}
+                                variant={productCurrentPage === pageNum ? "default" : "outline"}
+                                size="sm"
+                                onClick={() => setProductCurrentPage(pageNum)}
+                                className="h-8 w-8 p-0 text-xs"
+                              >
+                                {pageNum}
+                              </Button>
+                            );
+                          })}
+                        </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setProductCurrentPage(prev => Math.min(prev + 1, productTotalPages))}
+                          disabled={productCurrentPage === productTotalPages}
+                          className="h-8 w-8 p-0"
+                        >
+                          <IconChevronRight className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </div>

@@ -154,14 +154,14 @@ export default function DefectReportPage() {
     highrisk_level: 0,
   });
 
-  // Fetch suppliers from Firestore
+  // Fetch suppliers from suppliers/{userId}/list subcollection
   useEffect(() => {
     const fetchSuppliers = async () => {
       if (!user) return;
       
       try {
-        // Fetch suppliers from root suppliers collection
-        const suppliersRef = collection(db, "suppliers");
+        // Fetch suppliers from user-specific subcollection: suppliers/{userId}/list
+        const suppliersRef = collection(db, "suppliers", user.uid, "list");
         const suppliersSnapshot = await getDocs(suppliersRef);
         const suppliersData = suppliersSnapshot.docs.map(doc => ({
           id: doc.id,
@@ -170,13 +170,14 @@ export default function DefectReportPage() {
         setSuppliers(suppliersData);
       } catch (error) {
         console.error("Error fetching suppliers:", error);
+        toast.error("Failed to load suppliers");
       }
     };
     
     fetchSuppliers();
   }, [user]);
 
-  // Fetch warehouses from Firestore
+  // Fetch warehouses from warehouses/{userId}/list
   useEffect(() => {
     const fetchWarehouses = async () => {
       if (!user) return;
@@ -191,6 +192,7 @@ export default function DefectReportPage() {
         setWarehouses(warehousesData);
       } catch (error) {
         console.error("Error fetching warehouses:", error);
+        toast.error("Failed to load warehouses");
       }
     };
     
@@ -212,52 +214,43 @@ export default function DefectReportPage() {
         setRawMaterials(materialsData);
       } catch (error) {
         console.error("Error fetching raw materials:", error);
+        toast.error("Failed to load raw materials");
       }
     };
     
     fetchRawMaterials();
   }, [user]);
 
-  // Handle material selection
-  const handleMaterialSelect = (materialId) => {
-    const selectedMaterialData = rawMaterials.find(m => m.id === materialId);
-    if (selectedMaterialData) {
-      setSelectedMaterial(selectedMaterialData);
-      setNewReport(prev => ({
-        ...prev,
-        materialId: selectedMaterialData.id,
-        materialName: selectedMaterialData.name,
-        unit: selectedMaterialData.unit || "kg",
-        costPerUnit: selectedMaterialData.unitPrice?.toString() || "",
-        batchNumber: selectedMaterialData.batchNumber || "",
-        supplierId: selectedMaterialData.supplierId || "",
-        supplierName: selectedMaterialData.supplierName || "",
-        warehouseId: selectedMaterialData.warehouseId || "",
-        warehouseName: selectedMaterialData.warehouseName || "",
-        location: selectedMaterialData.location || "",
-      }));
-      
-      // Set supplier details
-      if (selectedMaterialData.supplierId) {
-        const supplier = suppliers.find(s => s.id === selectedMaterialData.supplierId);
-        if (supplier) {
-          setSelectedSupplierDetails(supplier);
-        }
-      } else {
-        setSelectedSupplierDetails(null);
-      }
-      
-      // Set warehouse details
-      if (selectedMaterialData.warehouseId) {
-        const warehouse = warehouses.find(w => w.id === selectedMaterialData.warehouseId);
-        if (warehouse) {
-          setSelectedWarehouseDetails(warehouse);
-        }
-      } else {
-        setSelectedWarehouseDetails(null);
-      }
+  // Update the handleMaterialSelect function
+const handleMaterialSelect = (materialId) => {
+  const selectedMaterialData = rawMaterials.find(m => m.id === materialId);
+  if (selectedMaterialData) {
+    setSelectedMaterial(selectedMaterialData);
+    setNewReport(prev => ({
+      ...prev,
+      materialId: selectedMaterialData.id, // Keep ID for form submission
+      materialName: selectedMaterialData.name,
+      unit: selectedMaterialData.unit || "kg",
+      costPerUnit: selectedMaterialData.unitPrice?.toString() || "",
+      batchNumber: selectedMaterialData.batchNumber || "",
+      supplierId: selectedMaterialData.supplierId || "",
+      supplierName: selectedMaterialData.supplierName || "",
+      warehouseId: selectedMaterialData.warehouseId || "",
+      warehouseName: selectedMaterialData.warehouseName || "",
+      location: selectedMaterialData.location || "",
+    }));
+    
+    // Set supplier and warehouse details
+    if (selectedMaterialData.supplierId) {
+      const supplier = suppliers.find(s => s.id === selectedMaterialData.supplierId);
+      if (supplier) setSelectedSupplierDetails(supplier);
     }
-  };
+    if (selectedMaterialData.warehouseId) {
+      const warehouse = warehouses.find(w => w.id === selectedMaterialData.warehouseId);
+      if (warehouse) setSelectedWarehouseDetails(warehouse);
+    }
+  }
+};
 
   // Handle supplier selection directly
   const handleSupplierSelect = (supplierId) => {
@@ -628,15 +621,12 @@ export default function DefectReportPage() {
   // Main UI
   return (
     <>
-     
-      
       <SidebarProvider>
         <AppSidebar variant="inset" />
         <SidebarInset>
           <SiteHeader className="relative overflow-hidden" />
           
-            <div className="pointer-events-none fixed inset-0 overflow-hidden z-0">
-            
+          <div className="pointer-events-none fixed inset-0 overflow-hidden z-0">
             <div className="absolute top-[30%] -right-[10%] h-[400px] w-[400px] rounded-full bg-indigo-500/15 blur-[120px] " />
             <div className="absolute bottom-[10%] left-[20%] h-[300px] w-[300px] rounded-full bg-fuchsia-600/10 blur-[100px] " />
           </div>
@@ -669,371 +659,376 @@ export default function DefectReportPage() {
   </DialogTrigger>
   
   <DialogContent 
-    className="w-[95vw] max-w-[95vw] sm:w-[90vw] sm:max-w-[850px] h-[90vh] max-h-[90vh] p-0 gap-0 bg-background/95 backdrop-blur-md border-border/50 flex flex-col overflow-hidden"
+    className="w-[95vw] max-w-[95vw] sm:w-[90vw] sm:max-w-[900px] h-[90vh] max-h-[90vh] p-0 gap-0 bg-background flex flex-col overflow-hidden"
     showCloseButton={true}
   >
-    <DialogHeader className="px-4 sm:px-6 py-3 sm:py-4 border-b border-border/50 flex-shrink-0">
-      <DialogTitle className="text-lg sm:text-xl flex items-center gap-2">
-        <IconBug className="h-5 w-5 text-primary" />
-        Create New Defect Report
+    <DialogHeader className="px-6 py-4 border-b flex-shrink-0">
+      <DialogTitle className="text-xl flex items-center gap-2">
+        <IconBug className="h-5 w-5" />
+        Create Defect Report
       </DialogTitle>
-      <DialogDescription className="text-xs sm:text-sm">
-        Enter the details of the defective material. Fields marked with * are required.
+      <DialogDescription className="text-sm text-muted-foreground">
+        Record defective material details for tracking and analysis.
       </DialogDescription>
     </DialogHeader>
 
     {/* Scrollable form area */}
-    <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-4 scrollbar-thin scrollbar-thumb-border/50">
-      <form id="defect-form" onSubmit={(e) => { e.preventDefault(); handleSubmitNewReport(); }} className="space-y-6 sm:space-y-8 pb-4">
+    <div className="flex-1 overflow-y-auto px-6 py-4">
+      <form id="defect-form" onSubmit={(e) => { e.preventDefault(); handleSubmitNewReport(); }} className="space-y-6">
         
         {/* Material Selection */}
-        <div className="space-y-3 sm:space-y-4">
-          <h3 className="text-xs sm:text-sm font-semibold flex items-center gap-2 text-primary/80 uppercase tracking-wider">
-            <IconPackage className="h-4 w-4" />
-            Material Information
-          </h3>
-          <div className="grid gap-3 sm:gap-4">
-            <div className="space-y-1.5 sm:space-y-2">
-              <label className="text-xs sm:text-sm font-medium">Select Material *</label>
-              <Select value={newReport.materialId} onValueChange={handleMaterialSelect}>
-                <SelectTrigger className="w-full h-10 sm:h-11 py-6 bg-background border-border/50 text-start overflow-hidden">
-                  <SelectValue placeholder="Choose a raw material..." />
-                </SelectTrigger>
-                <SelectContent className="max-h-[300px]">
-                  {rawMaterials.length === 0 ? (
-                    <div className="px-2 py-3 text-sm text-muted-foreground text-center">No materials found.</div>
-                  ) : (
-                    rawMaterials.map((material) => (
-                      <SelectItem key={material.id} value={material.id} className="py-2 sm:py-3">
-                        <div className="flex flex-col gap-0.5 sm:gap-1">
-                          <span className="font-semibold text-xs sm:text-sm">{material.name}</span>
-                          <div className="flex flex-wrap gap-1 sm:gap-2 text-[9px] sm:text-[10px] text-muted-foreground">
-                            <span className="flex items-center gap-0.5">
-                              <IconBarcode className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
-                              Batch: {material.batchNumber || "N/A"}
-                            </span>
-                            <span>•</span>
-                            <span>Stock: {material.quantity || 0} {material.unit || "kg"}</span>
-                            <span>•</span>
-                            <span>Price: ${material.unitPrice || 0}</span>
-                          </div>
+        <div className="space-y-3">
+          <div className="flex items-center gap-2">
+            <IconPackage className="h-4 w-4 text-muted-foreground" />
+            <h3 className="text-sm font-medium">Material Information</h3>
+          </div>
+          
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Select Material *</label>
+            <Select onValueChange={handleMaterialSelect}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Choose a raw material..." />
+              </SelectTrigger>
+              <SelectContent className="max-h-[300px]">
+                {rawMaterials.length === 0 ? (
+                  <div className="px-2 py-3 text-sm text-muted-foreground text-center">No materials found.</div>
+                ) : (
+                  rawMaterials.map((material) => (
+                    <SelectItem key={material.id} value={material.id} className="py-2">
+                      <div className="flex flex-col gap-0.5">
+                        <span className="text-sm font-medium">{material.name}</span>
+                        <div className="flex gap-2 text-xs text-muted-foreground">
+                          <span>Batch: {material.batchNumber || "N/A"}</span>
+                          <span>•</span>
+                          <span>Stock: {material.quantity || 0} {material.unit || "kg"}</span>
                         </div>
-                      </SelectItem>
-                    ))
-                  )}
-                </SelectContent>
-              </Select>
-            </div>
+                      </div>
+                    </SelectItem>
+                  ))
+                )}
+              </SelectContent>
+            </Select>
+          </div>
 
-            {/* Batch Preview - Shows full material details after selection */}
-            {selectedMaterial && (
-              <div className="bg-primary/5 rounded-lg p-3 sm:p-4 border border-primary/10">
-                <div className="flex items-center justify-between mb-2 sm:mb-3">
-                  <p className="text-[10px] sm:text-xs font-medium text-primary uppercase tracking-wider flex items-center gap-1">
-                    <IconPackage className="h-3 w-3" />
-                    Batch Preview
-                  </p>
-                  <Badge variant="outline" className="text-[9px] sm:text-[10px]">
-                    {selectedMaterial.status || "In Stock"}
-                  </Badge>
+          {/* Material Details Preview - Only shown after selection */}
+          {selectedMaterial && (
+            <div className="border rounded-md p-4">
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Selected Material Details</span>
+                <Badge variant="outline" className="text-xs">
+                  {selectedMaterial.status || "In Stock"}
+                </Badge>
+              </div>
+              
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                <div>
+                  <p className="text-xs text-muted-foreground">Material Name</p>
+                  <p className="text-sm font-medium mt-0.5">{selectedMaterial.name}</p>
                 </div>
-                
-                {/* Material Details Grid - Responsive */}
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-4">
-                  <div className="space-y-0.5">
-                    <p className="text-[9px] sm:text-[10px] uppercase text-muted-foreground font-bold">Batch Number</p>
-                    <p className="text-[11px] sm:text-sm font-mono font-medium break-all">{selectedMaterial.batchNumber || "N/A"}</p>
-                  </div>
-                  <div className="space-y-0.5">
-                    <p className="text-[9px] sm:text-[10px] uppercase text-muted-foreground font-bold">Unit</p>
-                    <p className="text-[11px] sm:text-sm font-medium">{selectedMaterial.unit || "kg"}</p>
-                  </div>
-                  <div className="space-y-0.5">
-                    <p className="text-[9px] sm:text-[10px] uppercase text-muted-foreground font-bold">Unit Price</p>
-                    <p className="text-[11px] sm:text-sm font-medium">${selectedMaterial.unitPrice || 0}</p>
-                  </div>
-                  <div className="space-y-0.5">
-                    <p className="text-[9px] sm:text-[10px] uppercase text-muted-foreground font-bold">Current Stock</p>
-                    <p className="text-[11px] sm:text-sm font-semibold text-primary">{selectedMaterial.quantity || 0}</p>
-                  </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Batch Number</p>
+                  <p className="text-sm font-mono mt-0.5">{selectedMaterial.batchNumber || "N/A"}</p>
                 </div>
-                
-                {/* Additional Material Info for xs screens */}
-                <div className="mt-2 sm:mt-3 pt-2 sm:pt-3 border-t border-primary/10 grid grid-cols-1 gap-1 text-[10px] sm:text-xs text-muted-foreground">
-                  {selectedMaterial.supplierName && (
-                    <p className="flex items-center gap-1">
-                      <IconBuildingStore className="h-3 w-3" />
-                      Supplier: {selectedMaterial.supplierName}
-                    </p>
-                  )}
-                  {selectedMaterial.warehouseName && (
-                    <p className="flex items-center gap-1">
-                      <IconBuildingWarehouse className="h-3 w-3" />
-                      Warehouse: {selectedMaterial.warehouseName}
-                    </p>
-                  )}
-                  {selectedMaterial.location && (
-                    <p className="flex items-center gap-1">
-                      <IconMapPin className="h-3 w-3" />
-                      Location: {selectedMaterial.location}
-                    </p>
-                  )}
+                <div>
+                  <p className="text-xs text-muted-foreground">Unit</p>
+                  <p className="text-sm font-medium mt-0.5">{selectedMaterial.unit || "kg"}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Unit Price</p>
+                  <p className="text-sm font-medium mt-0.5">${selectedMaterial.unitPrice || 0}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Current Stock</p>
+                  <p className="text-sm font-medium mt-0.5">{selectedMaterial.quantity || 0}</p>
                 </div>
               </div>
-            )}
-          </div>
+              
+              <div className="mt-3 pt-3 border-t text-xs text-muted-foreground space-y-1">
+                {selectedMaterial.supplierName && (
+                  <p>Supplier: {selectedMaterial.supplierName}</p>
+                )}
+                {selectedMaterial.warehouseName && (
+                  <p>Warehouse: {selectedMaterial.warehouseName}</p>
+                )}
+                {selectedMaterial.location && (
+                  <p>Location: {selectedMaterial.location}</p>
+                )}
+              </div>
+            </div>
+          )}
         </div>
 
-        {/* Info Grid: Supplier & Warehouse side-by-side */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
+        {/* Supplier & Warehouse - Two Columns */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
           {/* Supplier */}
-          <div className="space-y-2 sm:space-y-3">
-            <h3 className="text-xs sm:text-sm font-semibold flex items-center gap-2">
-              <IconBuildingStore className="h-4 w-4 text-primary" />
-              Supplier
-            </h3>
-            <Select value={newReport.supplierId} onValueChange={handleSupplierSelect}>
-              <SelectTrigger className="h-10 sm:h-11 py-6">
-                <SelectValue placeholder="Choose supplier..." />
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <IconBuildingStore className="h-4 w-4 text-muted-foreground" />
+              <h3 className="text-sm font-medium">Supplier</h3>
+            </div>
+            
+            <Select onValueChange={handleSupplierSelect}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select supplier..." />
               </SelectTrigger>
               <SelectContent>
                 {suppliers.length === 0 ? (
                   <div className="px-2 py-3 text-sm text-muted-foreground text-center">No suppliers found.</div>
                 ) : (
                   suppliers.map((s) => (
-                    <SelectItem key={s.id} value={s.id} className="py-2">
+                    <SelectItem key={s.id} value={s.id}>
                       <div className="flex flex-col">
-                        <span className="text-sm">{s.name}</span>
-                        {s.contact && <span className="text-[10px] text-muted-foreground">Contact: {s.contact}</span>}
+                        <span>{s.name}</span>
+                        {s.contact && <span className="text-xs text-muted-foreground">{s.contact}</span>}
                       </div>
                     </SelectItem>
                   ))
                 )}
               </SelectContent>
             </Select>
+            
             {selectedSupplierDetails && (
-              <div className="text-[10px] sm:text-xs bg-muted/40 p-2 sm:p-3 rounded-md space-y-1 border border-border/40">
-                <p className="flex items-center gap-1 sm:gap-2"><IconUser className="h-3 w-3" /> {selectedSupplierDetails.contact || "No contact"}</p>
-                {selectedSupplierDetails.phone && <p className="flex items-center gap-1 sm:gap-2"><IconPhone className="h-3 w-3" /> {selectedSupplierDetails.phone}</p>}
-                {selectedSupplierDetails.email && <p className="flex items-center gap-1 sm:gap-2 text-muted-foreground"><IconMail className="h-3 w-3" /> {selectedSupplierDetails.email}</p>}
+              <div className="border rounded-md p-3 space-y-1 text-sm">
+                <p className="font-medium">{selectedSupplierDetails.name}</p>
+                {selectedSupplierDetails.contact && (
+                  <p className="flex items-center gap-2 mt-2">
+                    <IconUser className="h-3.5 w-3.5 text-muted-foreground" />
+                    <span>{selectedSupplierDetails.contact}</span>
+                  </p>
+                )}
+                {selectedSupplierDetails.phone && (
+                  <p className="flex items-center gap-2">
+                    <IconPhone className="h-3.5 w-3.5 text-muted-foreground" />
+                    <span>{selectedSupplierDetails.phone}</span>
+                  </p>
+                )}
+                {selectedSupplierDetails.email && (
+                  <p className="flex items-center gap-2">
+                    <IconMail className="h-3.5 w-3.5 text-muted-foreground" />
+                    <span className="text-sm">{selectedSupplierDetails.email}</span>
+                  </p>
+                )}
               </div>
             )}
           </div>
 
           {/* Warehouse */}
-          <div className="space-y-2 sm:space-y-3">
-            <h3 className="text-xs sm:text-sm font-semibold flex items-center gap-2">
-              <IconBuildingWarehouse className="h-4 w-4 text-primary" />
-              Warehouse
-            </h3>
-            <Select value={newReport.warehouseId} onValueChange={handleWarehouseSelect} className="p-5">
-              <SelectTrigger className="h-10 sm:h-11 py-6">
-                <SelectValue placeholder="Choose warehouse..." />
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <IconBuildingWarehouse className="h-4 w-4 text-muted-foreground" />
+              <h3 className="text-sm font-medium">Warehouse</h3>
+            </div>
+            
+            <Select onValueChange={handleWarehouseSelect}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select warehouse..." />
               </SelectTrigger>
-              <SelectContent >
+              <SelectContent>
                 {warehouses.length === 0 ? (
                   <div className="px-2 py-3 text-sm text-muted-foreground text-center">No warehouses found.</div>
                 ) : (
                   warehouses.map((w) => (
-                    <SelectItem key={w.id} value={w.id} className="py-2">
+                    <SelectItem key={w.id} value={w.id}>
                       <div className="flex flex-col">
-                        <span className="text-sm">{w.name}</span>
-                        <span className="text-[10px] text-muted-foreground">{w.location}</span>
+                        <span>{w.name}</span>
+                        <span className="text-xs text-muted-foreground">{w.location}</span>
                       </div>
                     </SelectItem>
                   ))
                 )}
               </SelectContent>
             </Select>
+            
             {selectedWarehouseDetails && (
-              <div className="text-[10px] sm:text-xs bg-muted/40 p-2 sm:p-3 rounded-md space-y-1 border border-border/40">
-                <p className="flex items-center gap-1 sm:gap-2"><IconMapPin className="h-3 w-3" /> {selectedWarehouseDetails.location || "No location"}</p>
-                {selectedWarehouseDetails.manager && <p className="text-muted-foreground ml-4 sm:ml-5">Mgr: {selectedWarehouseDetails.manager}</p>}
-                {selectedWarehouseDetails.phone && <p className="flex items-center gap-1 sm:gap-2"><IconPhone className="h-3 w-3" /> {selectedWarehouseDetails.phone}</p>}
+              <div className="border rounded-md p-3 space-y-1 text-sm">
+                <p className="font-medium">{selectedWarehouseDetails.name}</p>
+                <p className="flex items-center gap-2 mt-2">
+                  <IconMapPin className="h-3.5 w-3.5 text-muted-foreground" />
+                  <span>{selectedWarehouseDetails.location || "No location"}</span>
+                </p>
+                {selectedWarehouseDetails.manager && (
+                  <p className="text-muted-foreground pl-5">Manager: {selectedWarehouseDetails.manager}</p>
+                )}
+                {selectedWarehouseDetails.phone && (
+                  <p className="flex items-center gap-2">
+                    <IconPhone className="h-3.5 w-3.5 text-muted-foreground" />
+                    <span>{selectedWarehouseDetails.phone}</span>
+                  </p>
+                )}
               </div>
             )}
           </div>
         </div>
 
         {/* Defect Details */}
-        <div className="space-y-3 sm:space-y-4">
-          <h3 className="text-xs sm:text-sm font-semibold flex items-center gap-2">
-            <IconBug className="h-4 w-4 text-primary" />
-            Defect Details
-          </h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-            <div className="space-y-1.5 sm:space-y-2">
-              <label className="text-xs font-medium uppercase text-muted-foreground">Defect Date</label>
+        <div className="space-y-3">
+          <div className="flex items-center gap-2">
+            <IconBug className="h-4 w-4 text-muted-foreground" />
+            <h3 className="text-sm font-medium">Defect Details</h3>
+          </div>
+          
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Defect Date</label>
               <Input 
                 name="defectDate" 
                 type="date" 
                 value={newReport.defectDate} 
                 onChange={handleInputChange}
-                className="h-10 sm:h-11"
               />
             </div>
-            <div className="space-y-1.5 sm:space-y-2">
-              <label className="text-xs font-medium uppercase text-muted-foreground">Defect Type</label>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Defect Type</label>
               <Input 
                 name="defectType" 
                 value={newReport.defectType} 
                 onChange={handleInputChange} 
-                placeholder="e.g., Quality Issue"
-                className="h-10 sm:h-11"
+                placeholder="e.g., Quality Issue, Physical Damage"
               />
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-            <div className="space-y-1.5 sm:space-y-2">
-              <label className="text-xs font-medium uppercase text-muted-foreground">Defect Source</label>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Defect Source</label>
               <Select value={newReport.defectSource} onValueChange={(value) => handleSelectChange("defectSource", value)}>
-                <SelectTrigger className="h-10 sm:h-11">
+                <SelectTrigger>
                   <SelectValue placeholder="Select source" />
                 </SelectTrigger>
                 <SelectContent>
                   {defectSourceOptions.map((option) => {
                     const Icon = option.icon;
                     return (
-                      <SelectItem key={option.value} value={option.value} className="cursor-pointer py-2">
+                      <SelectItem key={option.value} value={option.value}>
                         <div className="flex items-center gap-2">
                           <Icon className="h-4 w-4" />
-                                          <span>{option.label}</span>
-                                        </div>
-                                      </SelectItem>
-                                    );
-                                  })}
-                                </SelectContent>
-                              </Select>
-                            </div>
-                            <div className="space-y-1.5 sm:space-y-2">
-                              <label className="text-xs font-medium uppercase text-muted-foreground">Risk Level</label>
-                              <Select value={newReport.risk_level} onValueChange={(value) => handleSelectChange("risk_level", value)}>
-                                <SelectTrigger className="h-10 sm:h-11">
-                                  <SelectValue placeholder="Select risk level" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {risk_levelOptions.map((option) => (
-                                    <SelectItem key={option.value} value={option.value} className="cursor-pointer">
-                                      <span className={option.color}>{option.label}</span>
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </div>
-                          </div>
+                          <span>{option.label}</span>
                         </div>
+                      </SelectItem>
+                    );
+                  })}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Risk Level</label>
+              <Select value={newReport.risk_level} onValueChange={(value) => handleSelectChange("risk_level", value)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select risk level" />
+                </SelectTrigger>
+                <SelectContent>
+                  {risk_levelOptions.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      <span className={option.color}>{option.label}</span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </div>
 
-                        {/* Quantity and Cost */}
-                        <div className="space-y-3 sm:space-y-4">
-                          <h3 className="text-xs sm:text-sm font-semibold flex items-center gap-2">
-                            <IconCurrencyDollar className="h-4 w-4 text-primary" />
-                            Quantity & Cost
-                          </h3>
-                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
-                            <div className="space-y-1.5 sm:space-y-2">
-                              <label className="text-xs font-medium uppercase text-muted-foreground">Qty Defective *</label>
-                              <Input 
-                                name="quantity" 
-                                type="number" 
-                                step="0.01"
-                                value={newReport.quantity} 
-                                onChange={handleInputChange} 
-                                placeholder="0.00"
-                                className="h-10 sm:h-11"
-                                required 
-                              />
-                            </div>
-                            <div className="space-y-1.5 sm:space-y-2">
-                              <label className="text-xs font-medium uppercase text-muted-foreground">Unit</label>
-                              <Input 
-                                value={newReport.unit} 
-                                disabled 
-                                className="h-10 sm:h-11 bg-muted/30"
-                              />
-                            </div>
-                            <div className="space-y-1.5 sm:space-y-2">
-                              <label className="text-xs font-medium uppercase text-muted-foreground">Estimated Loss</label>
-                              <div className="h-10 sm:h-11 px-3 rounded-md border bg-destructive/5 border-destructive/20 flex items-center text-sm sm:text-base font-bold text-destructive">
-                                ${((parseFloat(newReport.quantity) || 0) * (parseFloat(newReport.costPerUnit) || 0)).toLocaleString()}
-                              </div>
-                            </div>
-                          </div>
-                        </div>
+        {/* Quantity & Cost */}
+        <div className="space-y-3">
+          <div className="flex items-center gap-2">
+            <IconCurrencyDollar className="h-4 w-4 text-muted-foreground" />
+            <h3 className="text-sm font-medium">Quantity & Cost</h3>
+          </div>
+          
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Defective Quantity *</label>
+              <Input 
+                name="quantity" 
+                type="number" 
+                step="0.01"
+                value={newReport.quantity} 
+                onChange={handleInputChange} 
+                placeholder="0.00"
+                required 
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Unit</label>
+              <Input value={newReport.unit} disabled className="bg-muted/30" />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Estimated Loss</label>
+              <div className="px-3 py-2 rounded-md border bg-muted/30 text-sm font-medium">
+                ${((parseFloat(newReport.quantity) || 0) * (parseFloat(newReport.costPerUnit) || 0)).toLocaleString()}
+              </div>
+            </div>
+          </div>
+        </div>
 
-                        {/* Description */}
-                        <div className="space-y-2 sm:space-y-3">
-                          <h3 className="text-xs sm:text-sm font-semibold flex items-center gap-2">
-                            <IconBug className="h-4 w-4 text-primary" />
-                            Description
-                          </h3>
-                          <Textarea 
-                            name="description" 
-                            value={newReport.description} 
-                            onChange={handleInputChange} 
-                            placeholder="Describe the defect in detail..."
-                            rows={3}
-                            className="min-h-[80px] sm:min-h-[100px] bg-background resize-none text-sm"
-                          />
-                        </div>
+        {/* Description */}
+        <div className="space-y-2">
+          <label className="text-sm font-medium">Description</label>
+          <Textarea 
+            name="description" 
+            value={newReport.description} 
+            onChange={handleInputChange} 
+            placeholder="Describe the defect in detail including any relevant observations..."
+            rows={3}
+          />
+        </div>
 
-                        {/* Action Taken */}
-                        <div className="space-y-2 sm:space-y-3">
-                          <h3 className="text-xs sm:text-sm font-semibold flex items-center gap-2">
-                            <IconTruck className="h-4 w-4 text-primary" />
-                            Action Taken
-                          </h3>
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                            <div className="space-y-1.5 sm:space-y-2">
-                              <label className="text-xs font-medium uppercase text-muted-foreground">Status</label>
-                              <Select value={newReport.status} onValueChange={(value) => handleSelectChange("status", value)}>
-                                <SelectTrigger className="h-10 sm:h-11">
-                                  <SelectValue placeholder="Select status" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {statusOptions.map((option) => (
-                                    <SelectItem key={option.value} value={option.value} className="cursor-pointer">
-                                      {option.label}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </div>
-                            <div className="space-y-1.5 sm:space-y-2">
-                              <label className="text-xs font-medium uppercase text-muted-foreground">Reported By</label>
-                              <Input 
-                                name="reportedBy" 
-                                value={newReport.reportedBy} 
-                                onChange={handleInputChange} 
-                                placeholder="Your name"
-                                className="h-10 sm:h-11"
-                              />
-                            </div>
-                          </div>
-                          <Textarea 
-                            name="actionTaken" 
-                            value={newReport.actionTaken} 
-                            onChange={handleInputChange} 
-                            placeholder="What action has been taken to address this defect?"
-                            rows={2}
-                            className="resize-none text-sm"
-                          />
-                        </div>
-                      </form>
-                    </div>
+        {/* Action Taken */}
+        <div className="space-y-3">
+          <div className="flex items-center gap-2">
+            <IconTruck className="h-4 w-4 text-muted-foreground" />
+            <h3 className="text-sm font-medium">Action Taken</h3>
+          </div>
+          
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Status</label>
+              <Select value={newReport.status} onValueChange={(value) => handleSelectChange("status", value)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select status" />
+                </SelectTrigger>
+                <SelectContent>
+                  {statusOptions.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Reported By</label>
+              <Input 
+                name="reportedBy" 
+                value={newReport.reportedBy} 
+                onChange={handleInputChange} 
+                placeholder="Your name"
+              />
+            </div>
+          </div>
+          
+          <Textarea 
+            name="actionTaken" 
+            value={newReport.actionTaken} 
+            onChange={handleInputChange} 
+            placeholder="Describe the actions taken to address this defect..."
+            rows={2}
+          />
+        </div>
+      </form>
+    </div>
 
-                    <DialogFooter className="px-4 sm:px-6 pb-8 border-t border-border/50 bg-muted/20 flex-shrink-0">
-                      
-                      <Button variant="ghost" onClick={() => setDialogOpen(false)} className="h-8 cursor-pointer">
-                        Cancel
-                      </Button>
-                      <Button type="submit" form="defect-form" className="px-4  h-8 cursor-pointer">
-                        <IconPlus className="mr-2 h-4 w-4" />
-                        Create Report
-                      </Button>
-                    </DialogFooter>
-                  </DialogContent>
-                </Dialog>
+    <DialogFooter className="px-6 py-4 border-t flex-shrink-0">
+      <Button variant="outline" onClick={() => setDialogOpen(false)}>
+        Cancel
+      </Button>
+      <Button type="submit" form="defect-form">
+        <IconPlus className="mr-2 h-4 w-4" />
+        Create Report
+      </Button>
+    </DialogFooter>
+  </DialogContent>
+</Dialog>
               </div>
             </div>
 

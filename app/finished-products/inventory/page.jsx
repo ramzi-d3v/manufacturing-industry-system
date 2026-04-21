@@ -28,6 +28,7 @@ import {
   IconBox,
   IconCalendar,
   IconChartBar,
+  IconDownload,
 } from "@tabler/icons-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -282,6 +283,63 @@ export default function FinishedProductPage() {
     });
   }, [products, searchQuery, categoryFilter, qualityFilter, sortBy]);
 
+  // Export CSV function
+  const handleExportCSV = () => {
+    if (filteredProducts.length === 0) {
+      toast.error("No products to export");
+      return;
+    }
+
+    const headers = [
+      "Product Name",
+      "Batch Number",
+      "Category",
+      "Quantity",
+      "Unit",
+      "Cost Price",
+      "Selling Price",
+      "Total Value",
+      "Supplier",
+      "Warehouse",
+      "Quality Status",
+      "Testing Status",
+      "Manufacturing Date",
+      "Expiry Date",
+      "Description"
+    ];
+
+    const csvData = filteredProducts.map((product) => [
+      product.name || "",
+      product.batchNumber || "",
+      product.category || "",
+      product.quantity || 0,
+      product.unit || "pcs",
+      product.costPrice || 0,
+      product.sellingPrice || 0,
+      ((product.sellingPrice || 0) * (product.quantity || 0)).toFixed(2),
+      product.supplierName || "",
+      product.warehouseName || "",
+      product.qualityGrade || product.testingStatus || "Pending",
+      product.testingStatus || "Not Tested",
+      product.manufacturingDate ? new Date(product.manufacturingDate).toLocaleDateString() : "",
+      product.expiryDate ? new Date(product.expiryDate).toLocaleDateString() : "",
+      product.description || ""
+    ]);
+
+    const csvContent = [headers, ...csvData].map(row => row.join(",")).join("\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute("download", `finished-products-${new Date().toISOString().split("T")[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    
+    toast.success(`Exported ${filteredProducts.length} products successfully!`);
+  };
+
   // Add new product
   const handleProductAdded = async (productData) => {
     if (!user) {
@@ -440,6 +498,10 @@ export default function FinishedProductPage() {
                 </p>
               </div>
               <div className="flex gap-2">
+                <Button onClick={handleExportCSV} variant="outline" className="cursor-pointer">
+                  <IconDownload className="mr-2 h-4 w-4" />
+                  Export CSV
+                </Button>
                 <Button onClick={handleAddClick} variant="outline" className="cursor-pointer">
                   <IconPlus className="mr-2 h-4 w-4" />
                   Add Product
@@ -490,7 +552,7 @@ export default function FinishedProductPage() {
                     <IconCurrencyDollar className="h-4 w-4 text-muted-foreground" />
                   </div>
                   <div className="text-2xl font-bold mt-2 text-primary">
-                    Tsh {stats.totalValue.toLocaleString()}
+                    ${stats.totalValue.toLocaleString()}
                   </div>
                 </CardHeader>
                 <CardContent className="pt-0">
@@ -508,7 +570,7 @@ export default function FinishedProductPage() {
                       </span>
                     </div>
                     <div className="text-muted-foreground">
-                      <span>Avg: Tsh {stats.averagePrice.toFixed(0)}/unit</span>
+                      <span>Avg: ${stats.averagePrice.toFixed(0)}/unit</span>
                     </div>
                   </div>
                   <p className="text-[10px] text-muted-foreground mt-2">

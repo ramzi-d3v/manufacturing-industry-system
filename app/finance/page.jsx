@@ -501,7 +501,7 @@ export default function IncomeExpensesPage() {
                 <IconWallet className="h-8 w-8 text-primary" />
                 Income & Expenses
               </h2>
-              <p className="text-muted-foreground">
+              <p className="text-sm text-muted-foreground">
                 Analyze your manufacturing financial performance
               </p>
             </div>
@@ -532,87 +532,87 @@ export default function IncomeExpensesPage() {
               {/* Main Metrics Row */}
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-4">
                 {/* Total Income */}
-                <div className="flex flex-col p-2 bg-background/20 rounded-lg">
-                  <div className="flex items-center gap-1 text-muted-foreground mb-1">
-                    <IconTrendingUp className="h-3.5 w-3.5 text-green-500" />
-                    <p className="text-[10px] font-medium uppercase tracking-wider">Total Income</p>
+                <div className="flex flex-col p-3 bg-background/20 rounded-lg">
+                  <div className="flex items-center gap-2 text-muted-foreground mb-2">
+                    <IconTrendingUp className="h-4 w-4 text-green-500" />
+                    <p className="text-xs font-medium uppercase tracking-wider">Total Income</p>
                   </div>
-                  <div className="flex items-baseline gap-2">
-                    <p className="text-2xl font-bold text-green-600">{formatCurrency(financials.totalIncome)}</p>
-                    <div className={cn("flex items-center gap-0.5 text-[10px]", incomeTrend.color)}>
-                      <IncomeTrendIcon className="h-2.5 w-2.5" />
+                  <div className="flex items-baseline gap-2 flex-wrap">
+                    <p className="text-xl md:text-2xl font-bold text-green-600">{formatCurrency(financials.totalIncome)}</p>
+                    <div className={cn("flex items-center gap-0.5 text-xs", incomeTrend.color)}>
+                      <IncomeTrendIcon className="h-3 w-3" />
                       <span>{incomeTrend.label}</span>
                       {incomeTrend.percentage !== "0" && (
-                        <span className="text-[9px]">({incomeTrend.percentage}%)</span>
+                        <span className="text-xs">({incomeTrend.percentage}%)</span>
                       )}
                     </div>
                   </div>
-                  <p className="text-[9px] text-muted-foreground mt-1">
+                  <p className="text-xs text-muted-foreground mt-1">
                     From finished products
                   </p>
                 </div>
 
                 {/* Total Expenses */}
-                <div className="flex flex-col p-2 bg-background/20 rounded-lg">
-                  <div className="flex items-center gap-1 text-muted-foreground mb-1">
-                    <IconTrendingDown className="h-3.5 w-3.5 text-red-500" />
-                    <p className="text-[10px] font-medium uppercase tracking-wider">Total Expenses</p>
+                <div className="flex flex-col p-3 bg-background/20 rounded-lg">
+                  <div className="flex items-center gap-2 text-muted-foreground mb-2">
+                    <IconTrendingDown className="h-4 w-4 text-red-500" />
+                    <p className="text-xs font-medium uppercase tracking-wider">Total Expenses</p>
                   </div>
-                  <div className="flex items-baseline gap-2">
-                    <p className="text-2xl font-bold text-red-600">{formatCurrency(financials.totalExpenses)}</p>
-                    <div className={cn("flex items-center gap-0.5 text-[10px]", expensesTrend.color)}>
-                      <ExpensesTrendIcon className="h-2.5 w-2.5" />
+                  <div className="flex items-baseline gap-2 flex-wrap">
+                    <p className="text-xl md:text-2xl font-bold text-red-600">{formatCurrency(financials.totalExpenses)}</p>
+                    <div className={cn("flex items-center gap-0.5 text-xs", expensesTrend.color)}>
+                      <ExpensesTrendIcon className="h-3 w-3" />
                       <span>{expensesTrend.label}</span>
                       {expensesTrend.percentage !== "0" && (
-                        <span className="text-[9px]">({expensesTrend.percentage}%)</span>
+                        <span className="text-xs">({expensesTrend.percentage}%)</span>
                       )}
                     </div>
                   </div>
-                  <p className="text-[9px] text-muted-foreground mt-1">
+                  <p className="text-xs text-muted-foreground mt-1">
                     Raw materials + Defects
                   </p>
                 </div>
 
                 {/* Net Profit */}
-                <div className="flex flex-col p-2 bg-background/20 rounded-lg">
-                  <div className="flex items-center gap-1 text-muted-foreground mb-1">
-                    <IconCurrencyDollar className="h-3.5 w-3.5" />
-                    <p className="text-[10px] font-medium uppercase tracking-wider">Net Profit</p>
+                <div className="flex flex-col p-3 bg-background/20 rounded-lg">
+                  <div className="flex items-center gap-2 text-muted-foreground mb-2">
+                    <IconCurrencyDollar className="h-4 w-4" />
+                    <p className="text-xs font-medium uppercase tracking-wider">Net Profit</p>
                   </div>
-                  <div className="flex items-baseline gap-2">
-                    <p className={cn("text-2xl font-bold", isProfitable ? "text-green-600" : "text-red-600")}>
+                  <div className="flex items-baseline gap-2 flex-wrap">
+                    <p className={cn("text-xl md:text-2xl font-bold", isProfitable ? "text-green-600" : "text-red-600")}>
                       {formatCurrency(financials.netProfit)}
                     </p>
-                    <div className={cn("flex items-center gap-0.5 text-[10px]", profitTrend.color)}>
-                      <ProfitTrendIcon className="h-2.5 w-2.5" />
+                    <div className={cn("flex items-center gap-0.5 text-xs", profitTrend.color)}>
+                      <ProfitTrendIcon className="h-3 w-3" />
                       <span>{profitTrend.label}</span>
                       {profitTrend.percentage !== "0" && (
-                        <span className="text-[9px]">({profitTrend.percentage}%)</span>
+                        <span className="text-xs">({profitTrend.percentage}%)</span>
                       )}
                     </div>
                   </div>
-                  <p className="text-[9px] text-muted-foreground mt-1">
+                  <p className="text-xs text-muted-foreground mt-1">
                     {isProfitable ? "Profitable period" : "Loss period"}
                   </p>
                 </div>
 
                 {/* Profit Margin */}
-                <div className="flex flex-col p-2 bg-background/20 rounded-lg">
-                  <div className="flex items-center gap-1 text-muted-foreground mb-1">
-                    <IconPercentage className="h-3.5 w-3.5" />
-                    <p className="text-[10px] font-medium uppercase tracking-wider">Profit Margin</p>
+                <div className="flex flex-col p-3 bg-background/20 rounded-lg">
+                  <div className="flex items-center gap-2 text-muted-foreground mb-2">
+                    <IconPercentage className="h-4 w-4" />
+                    <p className="text-xs font-medium uppercase tracking-wider">Profit Margin</p>
                   </div>
-                  <div className="flex items-baseline gap-2">
-                    <p className="text-2xl font-bold">{financials.profitMargin.toFixed(1)}%</p>
-                    <div className={cn("flex items-center gap-0.5 text-[10px]", marginTrend.color)}>
-                      <MarginTrendIcon className="h-2.5 w-2.5" />
+                  <div className="flex items-baseline gap-2 flex-wrap">
+                    <p className="text-xl md:text-2xl font-bold">{financials.profitMargin.toFixed(1)}%</p>
+                    <div className={cn("flex items-center gap-0.5 text-xs", marginTrend.color)}>
+                      <MarginTrendIcon className="h-3 w-3" />
                       <span>{marginTrend.label}</span>
                       {marginTrend.percentage !== "0" && (
-                        <span className="text-[9px]">({marginTrend.percentage}%)</span>
+                        <span className="text-xs">({marginTrend.percentage}%)</span>
                       )}
                     </div>
                   </div>
-                  <div className="mt-1 h-1 w-full bg-muted rounded-full overflow-hidden">
+                  <div className="mt-2 h-1.5 w-full bg-muted rounded-full overflow-hidden">
                     <div 
                       className={cn(
                         "h-full rounded-full transition-all duration-500",
@@ -626,17 +626,17 @@ export default function IncomeExpensesPage() {
                 </div>
 
                 {/* ROI */}
-                <div className="flex flex-col p-2 bg-background/20 rounded-lg">
-                  <div className="flex items-center gap-1 text-muted-foreground mb-1">
-                    <IconChartBar className="h-3.5 w-3.5" />
-                    <p className="text-[10px] font-medium uppercase tracking-wider">ROI</p>
+                <div className="flex flex-col p-3 bg-background/20 rounded-lg">
+                  <div className="flex items-center gap-2 text-muted-foreground mb-2">
+                    <IconChartBar className="h-4 w-4" />
+                    <p className="text-xs font-medium uppercase tracking-wider">ROI</p>
                   </div>
                   <div className="flex items-baseline gap-2">
-                    <p className={cn("text-2xl font-bold", financials.totalExpenses > 0 && financials.netProfit > 0 ? "text-green-600" : "text-red-600")}>
+                    <p className={cn("text-xl md:text-2xl font-bold", financials.totalExpenses > 0 && financials.netProfit > 0 ? "text-green-600" : "text-red-600")}>
                       {financials.totalExpenses > 0 ? ((financials.netProfit / financials.totalExpenses) * 100).toFixed(1) : 0}%
                     </p>
                   </div>
-                  <p className="text-[9px] text-muted-foreground mt-1">
+                  <p className="text-xs text-muted-foreground mt-1">
                     Return on investment
                   </p>
                 </div>
@@ -645,23 +645,23 @@ export default function IncomeExpensesPage() {
               {/* Expense Distribution */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2 border-t border-border/30">
                 {/* Expense Breakdown */}
-                <div className="flex flex-col gap-1.5">
-                  <div className="flex items-center gap-1.5">
-                    <IconChartPie className="h-3 w-3 text-muted-foreground" />
-                    <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Expense Distribution</p>
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-center gap-2">
+                    <IconChartPie className="h-4 w-4 text-muted-foreground" />
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Expense Distribution</p>
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    <Badge className="bg-blue-500/10 text-blue-600 text-[10px] px-2 py-0.5 gap-1">
-                      <IconPackage className="h-2.5 w-2.5" />
+                    <Badge className="bg-blue-500/10 text-blue-600 text-xs px-2 py-1 gap-1">
+                      <IconPackage className="h-3 w-3" />
                       Raw Materials: {formatCurrency(financials.rawMaterialCost)}
-                      <span className="text-[8px] opacity-70">
+                      <span className="text-xs opacity-70">
                         ({totalExpensesAmount > 0 ? ((financials.rawMaterialCost / totalExpensesAmount) * 100).toFixed(0) : 0}%)
                       </span>
                     </Badge>
-                    <Badge className="bg-red-500/10 text-red-600 text-[10px] px-2 py-0.5 gap-1">
-                      <IconBug className="h-2.5 w-2.5" />
+                    <Badge className="bg-red-500/10 text-red-600 text-xs px-2 py-1 gap-1">
+                      <IconBug className="h-3 w-3" />
                       Defect Losses: {formatCurrency(financials.defectLoss)}
-                      <span className="text-[8px] opacity-70">
+                      <span className="text-xs opacity-70">
                         ({totalExpensesAmount > 0 ? ((financials.defectLoss / totalExpensesAmount) * 100).toFixed(0) : 0}%)
                       </span>
                     </Badge>
@@ -669,23 +669,23 @@ export default function IncomeExpensesPage() {
                 </div>
 
                 {/* Key Metrics */}
-                <div className="flex flex-col gap-1.5">
-                  <div className="flex items-center gap-1.5">
-                    <IconBuildingWarehouse className="h-3 w-3 text-muted-foreground" />
-                    <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Key Metrics</p>
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-center gap-2">
+                    <IconBuildingWarehouse className="h-4 w-4 text-muted-foreground" />
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Key Metrics</p>
                   </div>
                   <div className="flex flex-wrap gap-3">
                     <div className="flex items-center gap-1.5">
-                      <span className="text-[9px] text-muted-foreground">Inventory Value:</span>
-                      <span className="text-[10px] font-semibold">{formatCurrency(financials.totalInventoryValue)}</span>
+                      <span className="text-xs text-muted-foreground">Inventory Value:</span>
+                      <span className="text-sm font-semibold">{formatCurrency(financials.totalInventoryValue)}</span>
                     </div>
                     <div className="flex items-center gap-1.5">
-                      <span className="text-[9px] text-muted-foreground">Potential Income:</span>
-                      <span className="text-[10px] font-semibold text-blue-600">{formatCurrency(financials.potentialIncome)}</span>
+                      <span className="text-xs text-muted-foreground">Potential Income:</span>
+                      <span className="text-sm font-semibold text-blue-600">{formatCurrency(financials.potentialIncome)}</span>
                     </div>
                     <div className="flex items-center gap-1.5">
-                      <span className="text-[9px] text-muted-foreground">Turnover:</span>
-                      <span className="text-[10px] font-semibold">
+                      <span className="text-xs text-muted-foreground">Turnover:</span>
+                      <span className="text-sm font-semibold">
                         {financials.totalInventoryValue > 0 ? ((financials.totalIncome / financials.totalInventoryValue) * 100).toFixed(0) : 0}%
                       </span>
                     </div>
@@ -695,7 +695,7 @@ export default function IncomeExpensesPage() {
 
               {/* Last updated timestamp */}
               <div className="flex justify-end mt-2 pt-1 border-t border-border/30">
-                <div className="text-[9px] text-muted-foreground">
+                <div className="text-xs text-muted-foreground">
                   Last updated: {new Date().toLocaleDateString()} at {new Date().toLocaleTimeString()}
                 </div>
               </div>
@@ -707,8 +707,8 @@ export default function IncomeExpensesPage() {
             {/* Expenses Breakdown */}
             <Card className="bg-background/80 backdrop-blur-sm border-border/50">
               <CardHeader>
-                <CardTitle className="text-sm font-medium">Expenses Breakdown</CardTitle>
-                <CardDescription className="text-[10px]">
+                <CardTitle className="text-base font-medium">Expenses Breakdown</CardTitle>
+                <CardDescription className="text-xs">
                   Detailed breakdown of where your money is spent
                 </CardDescription>
               </CardHeader>
@@ -718,18 +718,18 @@ export default function IncomeExpensesPage() {
                     const percentage = (expense.amount / financials.totalExpenses) * 100 || 0;
                     const Icon = expense.icon;
                     return (
-                      <div key={idx} className="space-y-1">
-                        <div className="flex items-center justify-between text-xs">
+                      <div key={idx} className="space-y-1.5">
+                        <div className="flex items-center justify-between text-sm">
                           <div className="flex items-center gap-2">
-                            <Icon className={`h-3.5 w-3.5 ${expense.color}`} />
+                            <Icon className={`h-4 w-4 ${expense.color}`} />
                             <span>{expense.name}</span>
                           </div>
                           <div className="flex items-center gap-2">
-                            <span className="text-xs font-semibold">{formatCurrency(expense.amount)}</span>
-                            <span className="text-[10px] text-muted-foreground">{percentage.toFixed(1)}%</span>
+                            <span className="text-sm font-semibold">{formatCurrency(expense.amount)}</span>
+                            <span className="text-xs text-muted-foreground">{percentage.toFixed(1)}%</span>
                           </div>
                         </div>
-                        <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
+                        <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
                           <div 
                             className="h-full rounded-full bg-red-500/70 transition-all duration-500"
                             style={{ width: `${percentage}%` }}
@@ -739,7 +739,7 @@ export default function IncomeExpensesPage() {
                     );
                   })}
                   {financials.totalExpenses === 0 && (
-                    <p className="text-center text-[10px] text-muted-foreground py-4">No expenses recorded</p>
+                    <p className="text-center text-sm text-muted-foreground py-4">No expenses recorded</p>
                   )}
                 </div>
               </CardContent>
@@ -748,8 +748,8 @@ export default function IncomeExpensesPage() {
             {/* Income Breakdown */}
             <Card className="bg-background/80 backdrop-blur-sm border-border/50">
               <CardHeader>
-                <CardTitle className="text-sm font-medium">Income Breakdown</CardTitle>
-                <CardDescription className="text-[10px]">
+                <CardTitle className="text-base font-medium">Income Breakdown</CardTitle>
+                <CardDescription className="text-xs">
                   Revenue sources and income streams
                 </CardDescription>
               </CardHeader>
@@ -759,18 +759,18 @@ export default function IncomeExpensesPage() {
                     const percentage = (income.amount / financials.totalIncome) * 100 || 0;
                     const Icon = income.icon;
                     return (
-                      <div key={idx} className="space-y-1">
-                        <div className="flex items-center justify-between text-xs">
+                      <div key={idx} className="space-y-1.5">
+                        <div className="flex items-center justify-between text-sm">
                           <div className="flex items-center gap-2">
-                            <Icon className={`h-3.5 w-3.5 ${income.color}`} />
+                            <Icon className={`h-4 w-4 ${income.color}`} />
                             <span>{income.name}</span>
                           </div>
                           <div className="flex items-center gap-2">
-                            <span className="text-xs font-semibold">{formatCurrency(income.amount)}</span>
-                            <span className="text-[10px] text-muted-foreground">{percentage.toFixed(1)}%</span>
+                            <span className="text-sm font-semibold">{formatCurrency(income.amount)}</span>
+                            <span className="text-xs text-muted-foreground">{percentage.toFixed(1)}%</span>
                           </div>
                         </div>
-                        <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
+                        <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
                           <div 
                             className="h-full rounded-full bg-green-500/70 transition-all duration-500"
                             style={{ width: `${percentage}%` }}
@@ -780,7 +780,7 @@ export default function IncomeExpensesPage() {
                     );
                   })}
                   {financials.totalIncome === 0 && (
-                    <p className="text-center text-[10px] text-muted-foreground py-4">No income recorded</p>
+                    <p className="text-center text-sm text-muted-foreground py-4">No income recorded</p>
                   )}
                 </div>
               </CardContent>
@@ -790,54 +790,54 @@ export default function IncomeExpensesPage() {
           {/* Summary Section */}
           <Card className="bg-background/80 backdrop-blur-sm border-border/50">
             <CardHeader>
-              <CardTitle className="text-sm font-medium">Financial Summary</CardTitle>
-              <CardDescription className="text-[10px]">
+              <CardTitle className="text-base font-medium">Financial Summary</CardTitle>
+              <CardDescription className="text-xs">
                 Key metrics and performance indicators
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                <div className="text-center p-2 rounded-lg bg-muted/30">
-                  <p className="text-[9px] text-muted-foreground uppercase tracking-wider">Income vs Expenses</p>
-                  <p className="text-xs font-semibold mt-1">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="text-center p-3 rounded-lg bg-muted/30">
+                  <p className="text-xs text-muted-foreground uppercase tracking-wider">Income vs Expenses</p>
+                  <p className="text-sm font-semibold mt-1">
                     {financials.totalIncome > financials.totalExpenses ? (
                       <span className="text-green-600">Surplus</span>
                     ) : (
                       <span className="text-red-600">Deficit</span>
                     )}
                   </p>
-                  <p className="text-[9px] text-muted-foreground mt-0.5">
+                  <p className="text-xs text-muted-foreground mt-1">
                     {formatCurrency(Math.abs(financials.totalIncome - financials.totalExpenses))}
                   </p>
                 </div>
-                <div className="text-center p-2 rounded-lg bg-muted/30">
-                  <p className="text-[9px] text-muted-foreground uppercase tracking-wider">Potential Income</p>
-                  <p className="text-xs font-semibold mt-1 text-blue-600">
+                <div className="text-center p-3 rounded-lg bg-muted/30">
+                  <p className="text-xs text-muted-foreground uppercase tracking-wider">Potential Income</p>
+                  <p className="text-sm font-semibold mt-1 text-blue-600">
                     {formatCurrency(financials.potentialIncome)}
                   </p>
-                  <p className="text-[9px] text-muted-foreground mt-0.5">
+                  <p className="text-xs text-muted-foreground mt-1">
                     If all products sold
                   </p>
                 </div>
-                <div className="text-center p-2 rounded-lg bg-muted/30">
-                  <p className="text-[9px] text-muted-foreground uppercase tracking-wider">Inventory Turnover</p>
-                  <p className="text-xs font-semibold mt-1">
+                <div className="text-center p-3 rounded-lg bg-muted/30">
+                  <p className="text-xs text-muted-foreground uppercase tracking-wider">Inventory Turnover</p>
+                  <p className="text-sm font-semibold mt-1">
                     {financials.totalInventoryValue > 0 
                       ? ((financials.totalIncome / financials.totalInventoryValue) * 100).toFixed(0) 
                       : 0}%
                   </p>
-                  <p className="text-[9px] text-muted-foreground mt-0.5">
+                  <p className="text-xs text-muted-foreground mt-1">
                     Income vs inventory value
                   </p>
                 </div>
-                <div className="text-center p-2 rounded-lg bg-muted/30">
-                  <p className="text-[9px] text-muted-foreground uppercase tracking-wider">Efficiency Ratio</p>
-                  <p className="text-xs font-semibold mt-1">
+                <div className="text-center p-3 rounded-lg bg-muted/30">
+                  <p className="text-xs text-muted-foreground uppercase tracking-wider">Efficiency Ratio</p>
+                  <p className="text-sm font-semibold mt-1">
                     {financials.totalIncome > 0 
                       ? ((financials.totalExpenses / financials.totalIncome) * 100).toFixed(0) 
                       : 0}%
                   </p>
-                  <p className="text-[9px] text-muted-foreground mt-0.5">
+                  <p className="text-xs text-muted-foreground mt-1">
                     Expenses per dollar earned
                   </p>
                 </div>

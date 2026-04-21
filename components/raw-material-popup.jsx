@@ -113,7 +113,7 @@ export function RawMaterialPopup({
     status: "In Stock",
   });
 
-  // Fetch suppliers from the correct subcollection structure
+  // Fetch suppliers from suppliers/{userId}/list subcollection
   useEffect(() => {
     const fetchSuppliers = async () => {
       const user = auth.currentUser;
@@ -121,8 +121,8 @@ export function RawMaterialPopup({
 
       setLoadingSuppliers(true);
       try {
-        // Fetch suppliers from root suppliers collection
-        const suppliersRef = collection(db, "suppliers");
+        // Fetch suppliers from user-specific subcollection: suppliers/{userId}/list
+        const suppliersRef = collection(db, "suppliers", user.uid, "list");
         const suppliersSnapshot = await getDocs(suppliersRef);
         const suppliersData = suppliersSnapshot.docs.map(doc => ({
           id: doc.id,
@@ -142,7 +142,7 @@ export function RawMaterialPopup({
     }
   }, [open]);
 
-  // Fetch warehouses from warehouses/{uid}/list
+  // Fetch warehouses from warehouses/{userId}/list
   useEffect(() => {
     const fetchWarehouses = async () => {
       const user = auth.currentUser;
@@ -638,6 +638,11 @@ export function RawMaterialPopup({
                     ))}
                   </SelectContent>
                 </Select>
+                {suppliers.length === 0 && !loadingSuppliers && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    No suppliers found. Please add suppliers first.
+                  </p>
+                )}
               </div>
 
               {/* Display Supplier Contact Information - Responsive for sm/xs */}
