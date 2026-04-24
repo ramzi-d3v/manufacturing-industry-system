@@ -264,7 +264,7 @@ export function AnnouncementsTodosSider({ adminUid, userUid }) {
                           <IconCalendarEvent size={8} />
                           {ann.createdAt?.toDate?.().toLocaleDateString() || "Just now"}
                         </span>
-                        <Badge className="text-[8px] bg-white/5">
+                        <Badge className="text-[9px] px-1.5 py-0.5 bg-purple-500/20 text-purple-300 border-purple-500/30 hover:bg-purple-500/30">
                           {ann.targetAudience === "all" ? "All Users" : "Personal"}
                         </Badge>
                       </div>
@@ -281,7 +281,7 @@ export function AnnouncementsTodosSider({ adminUid, userUid }) {
       </div>
       
       {/* Tasks Section */}
-      <div>
+      <div className="mt-5">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
             <IconListCheck size={14} className="text-green-400" />
