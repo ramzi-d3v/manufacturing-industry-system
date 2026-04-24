@@ -164,13 +164,22 @@ export default function WarehousesPage() {
   // Get items in warehouse
   const getItemsInWarehouse = (warehouseId, warehouseName) => {
     const materials = rawMaterials.filter(m => 
-      m.location === warehouseName || m.location === warehouseId
+      m.warehouseId === warehouseId || 
+      m.warehouseName === warehouseName ||
+      m.location === warehouseName || 
+      m.location === warehouseId
     );
     const products = finishedProducts.filter(p => 
-      p.location === warehouseName || p.location === warehouseId
+      p.warehouseId === warehouseId || 
+      p.warehouseName === warehouseName ||
+      p.location === warehouseName || 
+      p.location === warehouseId
     );
     const defects = defectReports.filter(d => 
-      d.location === warehouseName || d.location === warehouseId
+      d.warehouseId === warehouseId || 
+      d.warehouseName === warehouseName ||
+      d.location === warehouseName || 
+      d.location === warehouseId
     );
     return { materials, products, defects, total: materials.length + products.length + defects.length };
   };
@@ -193,19 +202,25 @@ export default function WarehousesPage() {
     return items.slice(startIndex, startIndex + itemsPerPage);
   };
 
-  // Filter warehouses
-  const filteredWarehouses = warehouses.filter(warehouse => {
-    if (searchQuery) {
-      const searchLower = searchQuery.toLowerCase();
-      return warehouse.name?.toLowerCase().includes(searchLower) ||
-             warehouse.location?.toLowerCase().includes(searchLower) ||
-             warehouse.manager?.toLowerCase().includes(searchLower);
-    }
-    if (filterType !== "all") {
-      return warehouse.type === filterType;
-    }
-    return true;
-  });
+  // Filter and sort warehouses by total items (highest first)
+  const filteredWarehouses = warehouses
+    .filter(warehouse => {
+      if (searchQuery) {
+        const searchLower = searchQuery.toLowerCase();
+        return warehouse.name?.toLowerCase().includes(searchLower) ||
+               warehouse.location?.toLowerCase().includes(searchLower) ||
+               warehouse.manager?.toLowerCase().includes(searchLower);
+      }
+      if (filterType !== "all") {
+        return warehouse.type === filterType;
+      }
+      return true;
+    })
+    .sort((a, b) => {
+      const statsA = getItemsInWarehouse(a.id, a.name);
+      const statsB = getItemsInWarehouse(b.id, b.name);
+      return statsB.total - statsA.total;
+    });
 
   // Pagination Component for each warehouse
   const Pagination = ({ warehouseId, currentPage, totalPages }) => {
@@ -315,7 +330,11 @@ export default function WarehousesPage() {
       <AppSidebar variant="inset" />
       <SidebarInset>
         <SiteHeader />
-        
+        <div className="pointer-events-none fixed inset-0 overflow-hidden z-0">
+            
+            <div className="absolute top-[30%] -right-[10%] h-[400px] w-[400px] rounded-full bg-indigo-500/15 blur-[120px] animate-pulse delay-1000" />
+            <div className="absolute bottom-[10%] left-[20%] h-[300px] w-[300px] rounded-full bg-fuchsia-600/10 blur-[100px] animate-pulse delay-2000" />
+          </div>
         <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
           {/* Header */}
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">

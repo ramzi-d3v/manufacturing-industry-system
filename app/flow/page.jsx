@@ -404,7 +404,11 @@ export default function LogisticsFlowPage() {
       <AppSidebar variant="inset" />
       <SidebarInset>
         <SiteHeader className="relative overflow-hidden bg-zinc-950" />
-        
+        <div className="pointer-events-none fixed inset-0 overflow-hidden z-0">
+            
+            <div className="absolute top-[30%] -right-[10%] h-[400px] w-[400px] rounded-full bg-indigo-500/15 blur-[120px] animate-pulse delay-1000" />
+            <div className="absolute bottom-[10%] left-[20%] h-[300px] w-[300px] rounded-full bg-fuchsia-600/10 blur-[100px] animate-pulse delay-2000" />
+          </div>
         <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
           {/* Header */}
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
