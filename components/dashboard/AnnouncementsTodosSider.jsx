@@ -165,7 +165,7 @@ export function AnnouncementsTodosSider({ adminUid, userUid }) {
 
   if (isLoading) {
     return (
-      <div className="space-y-5">
+      <div className=" mt-2 space-y-5 scrollbar-hide">
         <div className="bg-gradient-to-r from-purple-500/10 via-indigo-500/10 to-purple-500/10 rounded-xl p-4 border border-white/10">
           <div className="flex items-center justify-center py-8">
             <div className="animate-pulse text-slate-500 text-sm">Loading tasks...</div>
@@ -176,7 +176,7 @@ export function AnnouncementsTodosSider({ adminUid, userUid }) {
   }
 
   return (
-    <div className="space-y-5">
+    <div className=" scrollbar-hide mt-2">
       {/* Compact Header with Stats */}
       <div className="bg-gradient-to-r from-purple-500/10 via-indigo-500/10 to-purple-500/10 rounded-xl p-4 border border-white/10">
         <div className="flex items-center justify-between mb-3">
@@ -203,7 +203,7 @@ export function AnnouncementsTodosSider({ adminUid, userUid }) {
         </div>
         
         {/* Quick Stats Row */}
-        <div className="grid grid-cols-3 gap-2 pt-2 border-t border-white/10">
+        <div className="grid grid-cols-3 gap-2 pt-2 border-t border-white/10 scrollbar-hidec">
           <div className="text-center">
             <div className="text-lg font-bold text-white">{announcements.length}</div>
             <div className="text-[9px] text-slate-500">Announcements</div>
@@ -220,7 +220,7 @@ export function AnnouncementsTodosSider({ adminUid, userUid }) {
       </div>
       
       {/* Announcements Section */}
-      <div>
+      <div className="mt-5">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
             <IconSpeakerphone size={14} className="text-purple-400" />
@@ -231,7 +231,7 @@ export function AnnouncementsTodosSider({ adminUid, userUid }) {
           </Badge>
         </div>
         
-        <div className="space-y-2 max-h-[300px] overflow-y-auto pr-1">
+        <div className="space-y-2 max-h-[300px] overflow-y-auto pr-1 scrollbar-hide">
           {announcements.length === 0 ? (
             <div className="text-center py-8 bg-white/5 rounded-xl">
               <IconSpeakerphone size={32} className="mx-auto mb-2 text-slate-600" />
