@@ -14,6 +14,7 @@ import {
 import {
   IconLogout,
   IconUserCircle,
+  IconDotsVertical,
 } from "@tabler/icons-react"
 
 import {
@@ -99,6 +100,7 @@ export function NavUser({ user: initialUser }) {
                   {userData.email}
                 </span>
               </div>
+              <IconDotsVertical className="h-4 w-4 text-muted-foreground ml-1 flex-shrink-0" />
             </SidebarMenuButton>
           </DropdownMenuTrigger>
           <DropdownMenuContent

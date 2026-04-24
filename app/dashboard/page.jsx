@@ -18,6 +18,13 @@ import {
 } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import {
   IconBuildingWarehouse,
   IconTruck,
   IconBuildingStore,
@@ -88,6 +95,8 @@ export default function DashboardPage() {
   const [distributors, setDistributors] = useState([])
   const [loadingData, setLoadingData] = useState(true)
   const [activities, setActivities] = useState([])
+  const [dialogOpen, setDialogOpen] = useState(false)
+  const [dialogType, setDialogType] = useState(null)
 
   // Fetch real data from Firestore
   useEffect(() => {
@@ -266,6 +275,11 @@ export default function DashboardPage() {
   const totalSuppliers = suppliers.length
   const totalDistributors = distributors.length
   const totalPartners = totalSuppliers + totalDistributors
+
+  const openDialog = (type) => {
+    setDialogType(type)
+    setDialogOpen(true)
+  }
 
   const userName = user?.displayName || user?.email?.split('@')[0] || "Guest"
   const currentTime = new Date()
@@ -486,7 +500,7 @@ export default function DashboardPage() {
                       ))}
                       {warehouses.length === 0 && <p className="text-xs text-muted-foreground text-center py-3">No warehouses</p>}
                       {warehouses.length > 3 && (
-                        <Button variant="ghost" size="sm" className="w-full text-xs mt-1">View all {totalWarehouses}</Button>
+                        <Button variant="ghost" size="sm" className="w-full text-xs mt-1" onClick={() => openDialog('warehouses')}>View all {totalWarehouses}</Button>
                       )}
                     </CardContent>
                   </Card>
@@ -512,7 +526,7 @@ export default function DashboardPage() {
                       ))}
                       {suppliers.length === 0 && <p className="text-xs text-muted-foreground text-center py-3">No suppliers</p>}
                       {suppliers.length > 3 && (
-                        <Button variant="ghost" size="sm" className="w-full text-xs mt-1">View all {totalSuppliers}</Button>
+                        <Button variant="ghost" size="sm" className="w-full text-xs mt-1" onClick={() => openDialog('suppliers')}>View all {totalSuppliers}</Button>
                       )}
                     </CardContent>
                   </Card>
@@ -538,7 +552,7 @@ export default function DashboardPage() {
                       ))}
                       {distributors.length === 0 && <p className="text-xs text-muted-foreground text-center py-3">No distributors</p>}
                       {distributors.length > 3 && (
-                        <Button variant="ghost" size="sm" className="w-full text-xs mt-1">View all {totalDistributors}</Button>
+                        <Button variant="ghost" size="sm" className="w-full text-xs mt-1" onClick={() => openDialog('distributors')}>View all {totalDistributors}</Button>
                       )}
                     </CardContent>
                   </Card>
@@ -622,6 +636,121 @@ export default function DashboardPage() {
           </div>
         </div>
       </SidebarInset>
+
+      {/* View All Dialog */}
+      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <DialogContent className="w-[95vw] max-w-[95vw] sm:w-[90vw] sm:max-w-[600px] max-h-[85vh] overflow-y-auto scrollbar-hide p-4 sm:p-6 gap-0 bg-background">
+          <DialogHeader className="pb-4 border-b">
+            <DialogTitle className="text-lg sm:text-xl flex items-center gap-2">
+              {dialogType === 'warehouses' && <IconBuildingWarehouse className="h-5 w-5 text-blue-400" />}
+              {dialogType === 'suppliers' && <IconTruck className="h-5 w-5 text-green-400" />}
+              {dialogType === 'distributors' && <IconBuildingStore className="h-5 w-5 text-purple-400" />}
+              All {dialogType === 'warehouses' ? 'Warehouses' : dialogType === 'suppliers' ? 'Suppliers' : 'Distributors'}
+            </DialogTitle>
+            <DialogDescription className="text-xs sm:text-sm">
+              {dialogType === 'warehouses' && 'All your storage facilities'}
+              {dialogType === 'suppliers' && 'All your raw material providers'}
+              {dialogType === 'distributors' && 'All your product distribution partners'}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="py-4 space-y-3">
+            {dialogType === 'warehouses' && warehouses.map((wh) => (
+              <div key={wh.id} className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 p-3 rounded-lg bg-muted/50 border border-border">
+                <div className="h-10 w-10 rounded-full bg-blue-500/10 flex items-center justify-center flex-shrink-0">
+                  <IconBuildingWarehouse className="h-5 w-5 text-blue-400" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium truncate">{wh.name}</p>
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1">
+                    {wh.location && (
+                      <span className="text-xs text-muted-foreground flex items-center gap-1">
+                        <IconMapPin className="h-3 w-3" />
+                        {wh.location}
+                      </span>
+                    )}
+                    {wh.manager && (
+                      <span className="text-xs text-muted-foreground">Manager: {wh.manager}</span>
+                    )}
+                    {wh.type && (
+                      <Badge variant="outline" className="text-[10px]">{wh.type}</Badge>
+                    )}
+                  </div>
+                </div>
+                {wh.phone && (
+                  <span className="text-xs text-muted-foreground flex items-center gap-1 flex-shrink-0">
+                    <IconPhone className="h-3 w-3" />
+                    {wh.phone}
+                  </span>
+                )}
+              </div>
+            ))}
+
+            {dialogType === 'suppliers' && suppliers.map((sup) => (
+              <div key={sup.id} className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 p-3 rounded-lg bg-muted/50 border border-border">
+                <div className="h-10 w-10 rounded-full bg-green-500/10 flex items-center justify-center flex-shrink-0">
+                  <IconTruck className="h-5 w-5 text-green-400" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium truncate">{sup.name}</p>
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1">
+                    {sup.contact && (
+                      <span className="text-xs text-muted-foreground">Contact: {sup.contact}</span>
+                    )}
+                    {sup.email && (
+                      <span className="text-xs text-muted-foreground flex items-center gap-1">
+                        <IconMail className="h-3 w-3" />
+                        {sup.email}
+                      </span>
+                    )}
+                  </div>
+                </div>
+                {sup.phone && (
+                  <span className="text-xs text-muted-foreground flex items-center gap-1 flex-shrink-0">
+                    <IconPhone className="h-3 w-3" />
+                    {sup.phone}
+                  </span>
+                )}
+              </div>
+            ))}
+
+            {dialogType === 'distributors' && distributors.map((dist) => (
+              <div key={dist.id} className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 p-3 rounded-lg bg-muted/50 border border-border">
+                <div className="h-10 w-10 rounded-full bg-purple-500/10 flex items-center justify-center flex-shrink-0">
+                  <IconBuildingStore className="h-5 w-5 text-purple-400" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium truncate">{dist.name}</p>
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1">
+                    {dist.serviceArea && (
+                      <span className="text-xs text-muted-foreground">Area: {dist.serviceArea}</span>
+                    )}
+                    {dist.contact && (
+                      <span className="text-xs text-muted-foreground">Contact: {dist.contact}</span>
+                    )}
+                  </div>
+                </div>
+                {dist.phone && (
+                  <span className="text-xs text-muted-foreground flex items-center gap-1 flex-shrink-0">
+                    <IconPhone className="h-3 w-3" />
+                    {dist.phone}
+                  </span>
+                )}
+              </div>
+            ))}
+
+            {dialogType === 'warehouses' && warehouses.length === 0 && (
+              <p className="text-sm text-muted-foreground text-center py-8">No warehouses found</p>
+            )}
+            {dialogType === 'suppliers' && suppliers.length === 0 && (
+              <p className="text-sm text-muted-foreground text-center py-8">No suppliers found</p>
+            )}
+            {dialogType === 'distributors' && distributors.length === 0 && (
+              <p className="text-sm text-muted-foreground text-center py-8">No distributors found</p>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </SidebarProvider>
   )
 }
